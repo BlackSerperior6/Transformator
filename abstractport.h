@@ -9,10 +9,12 @@ class AbstractPort
 public:
     AbstractPort();
 
-    virtual bool Accept(std::string errorMessage, const std::vector<char> & data);
+    virtual bool Accept(const std::vector<char> & data);
 
 protected:
     AbstractPort* targetPort;
+
+    int connectionId;
 };
 
 #endif // ABSTRACTPORT_H

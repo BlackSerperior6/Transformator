@@ -21,7 +21,8 @@ HEADERS += \
     mainwindow.h \
     serialport.h \
     tcpclientconnection.h \
-    tcpport.h
+    tcpport.h \
+    tcpstatuscode.h
 
 FORMS += \
     mainwindow.ui
