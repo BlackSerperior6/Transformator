@@ -1,11 +1,7 @@
 #include "serialport.h"
 
 SerialPort::SerialPort(std::string serialPortName, DWORD baud) :
-    hComPort(INVALID_HANDLE_VALUE), isRunning(false), portName(serialPortName), baudRate(baud)
-{
-
-
-}
+    hComPort(INVALID_HANDLE_VALUE), isRunning(false), portName(serialPortName), baudRate(baud) {}
 
 SerialPort::~SerialPort()
 {
@@ -72,35 +68,40 @@ bool SerialPort::Open(std::string errorMessage)
     PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_TXCLEAR);
 }
 
-void SerialPort::SetCallbaclFunction(std::function<void (const std::vector<char> &)> callback)
+void SerialPort::SetCallbackFunction(std::function<void (const std::vector<char> &)> callback)
 {
     dataCallback = callback;
 }
 
-bool SerialPort::Accept(std::string errorMessage, const std::vector<char> & data)
+void SerialPort::SetErrorCallbackFunction(std::function<void (int, int, const std::string &)> callback)
+{
+    errorCallback = callback;
+}
+
+bool SerialPort::Accept(const std::vector<char> & data)
 {
     DWORD bytesWritten;
 
     if (!WriteFile(hComPort, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, NULL))
     {
-        errorMessage = GetLastError();
+        errorCallback(connectionId, 0, std::to_string(GetLastError()));
         return false;
     }
 
     if (bytesWritten != data.size())
     {
-        errorMessage = "Failed to write all data!";
+        errorCallback(connectionId, 0, "Failed to write all data!");
         return false;
     }
 
     return true;
 }
 
-bool SerialPort::StartReading(std::string errorMessage)
+bool SerialPort::StartReading()
 {
     if (hComPort == INVALID_HANDLE_VALUE)
     {
-        errorMessage = "COM port not open";
+        errorCallback(connectionId, 0, "COM port not open");
         return false;
     }
 

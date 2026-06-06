@@ -16,15 +16,17 @@ public:
 
     ~SerialPort();
 
-    bool Accept(std::string errorMessage, const std::vector<char> & data);
+    bool Accept(const std::vector<char> & data);
 
     bool Open(std::string errorMessage);
 
-    bool StartReading(std::string errorMessage);
+    bool StartReading();
 
     void Stop();
 
-    void SetCallbaclFunction(std::function<void(const std::vector<char>&)> callback);
+    void SetCallbackFunction(std::function<void(const std::vector<char>&)> callback);
+
+    void SetErrorCallbackFunction(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback);
 
 private:
     HANDLE hComPort;
@@ -34,6 +36,7 @@ private:
     DWORD baudRate;
 
     std::function<void(const std::vector<char>&)> dataCallback;
+    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
     std::string serialPortName;
 
     void ReadLoop()
@@ -50,14 +53,14 @@ private:
                 DWORD error = GetLastError();
 
                 if (error != ERROR_IO_PENDING && error != ERROR_SUCCESS)
+                {
+                    errorCallback(connectionId, 0, std::to_string(error));
                     break;
+                }
             }
 
             if (targetPort != nullptr)
-            {
-                std::string errorMessage;
-                targetPort->Accept(errorMessage, buffer);
-            }
+                targetPort->Accept(buffer);
 
             // Small sleep to prevent CPU spinning
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
