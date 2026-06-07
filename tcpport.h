@@ -22,7 +22,8 @@
 class TcpPort : public AbstractPort
 {
 public:
-    TcpPort(int targetPortNum, const std::set<std::string>& targetIPsList = {});
+    TcpPort(int targetPortNum, int conId, PortType type, AbstractPort* target = nullptr,
+            const std::set<std::string>& targetIPsList = {});
 
     ~TcpPort();
 

@@ -1,14 +1,15 @@
 #include "serialport.h"
 
-SerialPort::SerialPort(std::string serialPortName, DWORD baud) :
-    hComPort(INVALID_HANDLE_VALUE), isRunning(false), portName(serialPortName), baudRate(baud) {}
+SerialPort::SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud, AbstractPort* target) :
+    hComPort(INVALID_HANDLE_VALUE), portName(serialPortName), baudRate(baud),
+    AbstractPort(conId, type, target) {}
 
 SerialPort::~SerialPort()
 {
     Stop();
 }
 
-bool SerialPort::Open(std::string errorMessage)
+bool SerialPort::Start()
 {
     std::string fullPortName = "\\\\.\\" + portName;
             hComPort = CreateFileA(
@@ -23,7 +24,7 @@ bool SerialPort::Open(std::string errorMessage)
 
     if (hComPort == INVALID_HANDLE_VALUE)
     {
-        errorMessage = GetLastError();
+        errorCallback(connectionId, 0, std::to_string(GetLastError()));
         return false;
     }
 
@@ -32,7 +33,7 @@ bool SerialPort::Open(std::string errorMessage)
 
     if (!GetCommState(hComPort, &dcb))
     {
-        errorMessage = "Failed to get COM port state";
+        errorCallback(connectionId, 0, "Failed to get COM port state");
         CloseHandle(hComPort);
         return false;
     }
@@ -46,7 +47,7 @@ bool SerialPort::Open(std::string errorMessage)
 
     if (!SetCommState(hComPort, &dcb))
     {
-        errorMessage = "Failed to set COM port state";
+        errorCallback(connectionId, 0, "Failed to set COM port state");
         CloseHandle(hComPort);
         return false;
     }
@@ -60,12 +61,14 @@ bool SerialPort::Open(std::string errorMessage)
 
     if (!SetCommTimeouts(hComPort, &timeouts))
     {
-        errorMessage = "Failed to set COM port timeouts";
+        errorCallback(connectionId, 0, "Failed to set COM port timeouts");
         CloseHandle(hComPort);
         return false;
     }
 
     PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_TXCLEAR);
+
+    StartReading();
 }
 
 void SerialPort::SetCallbackFunction(std::function<void (const std::vector<char> &)> callback)
@@ -80,6 +83,9 @@ void SerialPort::SetErrorCallbackFunction(std::function<void (int, int, const st
 
 bool SerialPort::Accept(const std::vector<char> & data)
 {
+    if (!isRunning)
+        return false;
+
     DWORD bytesWritten;
 
     if (!WriteFile(hComPort, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, NULL))

@@ -1,7 +1,8 @@
 #include "tcpport.h"
 
-TcpPort::TcpPort(int listenPortNum, const std::set<std::string>& targetIPsList) : isRunning(false),
-    targetNetworkPort(listenPortNum), listenSocket(INVALID_SOCKET)
+TcpPort::TcpPort(int listenPortNum, int conId, PortType type, AbstractPort* target,
+                 const std::set<std::string>& targetIPsList) : targetNetworkPort(listenPortNum),
+    listenSocket(INVALID_SOCKET), AbstractPort(conId, type, target)
 {
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -68,14 +69,15 @@ void TcpPort::Stop()
 
 bool TcpPort::Accept(const std::vector<char> &data)
 {
+    if (!isRunning)
+        return false;
+
     bool allSuccess = true;
 
     for (size_t i = 0; i < clientConnections.size(); i++)
     {
         if (!SendData(i, data))
-        {
             allSuccess = false;
-        }
     }
 
     return allSuccess;

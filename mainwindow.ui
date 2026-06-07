@@ -49,7 +49,7 @@
       <string>Добавить подключение</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="CreateConnectionButton_2">
+    <widget class="QPushButton" name="DeleteConnection">
      <property name="geometry">
       <rect>
        <x>220</x>
@@ -62,7 +62,7 @@
       <string>Удалить подключение</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="CreateConnectionButton_3">
+    <widget class="QPushButton" name="ChangeConnection">
      <property name="geometry">
       <rect>
        <x>430</x>
@@ -76,7 +76,7 @@
      </property>
     </widget>
    </widget>
-   <widget class="QListView" name="Logs">
+   <widget class="QListView" name="ErrorLogs">
     <property name="geometry">
      <rect>
       <x>0</x>

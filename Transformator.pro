@@ -10,21 +10,27 @@ CONFIG += c++11
 
 SOURCES += \
     abstractport.cpp \
+    connectionedit.cpp \
     main.cpp \
     mainwindow.cpp \
+    portsconnection.cpp \
     serialport.cpp \
     tcpclientconnection.cpp \
     tcpport.cpp
 
 HEADERS += \
+    PortType.h \
     abstractport.h \
+    connectionedit.h \
     mainwindow.h \
+    portsconnection.h \
     serialport.h \
     tcpclientconnection.h \
     tcpport.h \
     tcpstatuscode.h
 
 FORMS += \
+    connectionedit.ui \
     mainwindow.ui
 
 # Default rules for deployment.

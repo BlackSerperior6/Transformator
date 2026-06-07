@@ -12,13 +12,13 @@
 class SerialPort : public AbstractPort
 {
 public:
-    SerialPort(std::string serialPortName, DWORD baud = CBR_9600);
+    SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud = CBR_9600, AbstractPort* target = nullptr);
 
     ~SerialPort();
 
     bool Accept(const std::vector<char> & data);
 
-    bool Open(std::string errorMessage);
+    bool Start();
 
     bool StartReading();
 
