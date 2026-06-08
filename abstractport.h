@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <atomic>
+#include <functional>
 
 class AbstractPort
 {
@@ -18,14 +19,18 @@ public:
 
     virtual void Stop();
 
-protected:
-    AbstractPort* targetPort;
+    void SetErrorCallback(std::function<void(int, int, const std::string&)> callback);
 
     PortType portType;
+
+protected:
+    AbstractPort* targetPort;
 
     int connectionId;
 
     std::atomic<bool> isRunning;
+
+    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
 };
 
 #endif // ABSTRACTPORT_H

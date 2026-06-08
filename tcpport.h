@@ -43,8 +43,6 @@ public:
 
     void SetServerReceiveCallback(std::function<void(const std::string&, const std::vector<char>&)> callback);
 
-    void SetErrorCallback(std::function<void(int, int, const std::string&)> callback);
-
     void SetRetryConfig(int maxRetries, int delayMs);
 
 private:
@@ -72,7 +70,6 @@ private:
 
     std::function<void(const std::vector<char>&)> receiveCallback;
     std::function<void(const std::string&, const std::vector<char>&)> serverreceiveCallback;
-    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
 
     void callErrorCallback(int errorCode, const std::string& errorMessage)
     {

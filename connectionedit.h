@@ -17,8 +17,17 @@ class ConnectionEdit : public QDialog
 
 public:
     explicit ConnectionEdit(QWidget *parent = nullptr,
-                            PortsConnection* connection = nullptr);
+                            PortsConnection* connection = nullptr,
+                            int connectionCounter = 0,
+                            std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback = nullptr);
     ~ConnectionEdit();
+
+public:
+    PortsConnection* portsConnection;
+
+    int updatedConnectionCounter;
+
+    bool addedAConnection;
 
 private slots:
     void on_ConTypeSelectionFirst_currentIndexChanged(int index);
@@ -27,12 +36,12 @@ private slots:
 
     void on_SaveConnectionButton_clicked();
 
-    PortsConnection* CreatConnection();
-
-    PortsConnection* portsConnection;
-
 private:
     Ui::ConnectionEdit *ui;
+
+    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
+
+    PortsConnection* CreateConnection();
 
     std::set<std::string> ParseIpInput(QPlainTextEdit* plainText)
     {

@@ -1,21 +1,73 @@
 #include "connectionedit.h"
 #include "ui_connectionedit.h"
 
-ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection) :
+ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int connectionCounter,
+                               std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback) :
     QDialog(parent),
     ui(new Ui::ConnectionEdit),
-    portsConnection(connection)
+    portsConnection(connection),
+    addedAConnection(false),
+    errorCallback(callback)
 {
     ui->setupUi(this);
 
-    ui->IPEdit1->setVisible(false);
-    ui->IPEdit2->setVisible(false);
-    ui->IPLabel1->setVisible(false);
-    ui->IPLabel2->setVisible(false);
-    ui->NetLabel1->setVisible(false);
-    ui->NetLabel2->setVisible(false);
-    ui->NETPortEdit1->setVisible(false);
-    ui->NETPortEdit2->setVisible(false);
+    PortType portOneType;
+    PortType portTwoType;
+
+    updatedConnectionCounter = connectionCounter;
+
+    if (portsConnection == nullptr)
+    {
+        portOneType = PortType::COMPort;
+        portTwoType = PortType::COMPort;
+    }
+    else
+    {
+        portOneType = portsConnection->firstPort->portType;
+        portTwoType = portsConnection->secondPort->portType;
+    }
+
+    if (portOneType == PortType::COMPort)
+    {
+        ui->IPEdit1->setVisible(false);
+        ui->IPLabel1->setVisible(false);
+        ui->NetLabel1->setVisible(false);
+        ui->NETPortEdit1->setVisible(false);
+
+        ui->COMEdit1->setVisible(true);
+        ui->ComLabel1->setVisible(true);
+    }
+    else if (portOneType == PortType::TCPPort)
+    {
+        ui->COMEdit1->setVisible(false);
+        ui->ComLabel1->setVisible(false);
+
+        ui->IPEdit1->setVisible(true);
+        ui->IPLabel1->setVisible(true);
+        ui->NetLabel1->setVisible(true);
+        ui->NETPortEdit1->setVisible(true);
+    }
+
+    if (portTwoType == PortType::TCPPort)
+    {
+        ui->IPEdit2->setVisible(false);
+        ui->IPLabel2->setVisible(false);
+        ui->NetLabel2->setVisible(false);
+        ui->NETPortEdit2->setVisible(false);
+
+        ui->COMEdit2->setVisible(true);
+        ui->ComLabel2->setVisible(true);
+    }
+    else if (portTwoType == PortType::TCPPort)
+    {
+        ui->COMEdit2->setVisible(false);
+        ui->ComLabel2->setVisible(false);
+
+        ui->IPEdit2->setVisible(true);
+        ui->IPLabel2->setVisible(true);
+        ui->NetLabel2->setVisible(true);
+        ui->NETPortEdit2->setVisible(true);
+    }
 }
 
 ConnectionEdit::~ConnectionEdit()
@@ -82,11 +134,22 @@ void ConnectionEdit::on_SaveConnectionButton_clicked()
         portsConnection->firstPort->Stop();
         portsConnection->secondPort->Stop();
     }
+    else
+    {
+        addedAConnection = true;
+        updatedConnectionCounter++;
+    }
 
-    portsConnection = CreatConnection();
+    portsConnection = CreateConnection();
+
+    portsConnection->firstPort->SetErrorCallback(errorCallback);
+    portsConnection->secondPort->SetErrorCallback(errorCallback);
+
+    portsConnection->secondPort->Start();
+    portsConnection->firstPort->Start();
 }
 
-PortsConnection* ConnectionEdit::CreatConnection()
+PortsConnection* ConnectionEdit::CreateConnection()
 {
     AbstractPort* firstPort;
     AbstractPort* secondport;

@@ -15,11 +15,6 @@ TcpPort::~TcpPort()
     WSACleanup();
 }
 
-void TcpPort::SetErrorCallback(std::function<void (int, int, const std::string &)> callback)
-{
-    errorCallback = callback;
-}
-
 void TcpPort::SetRetryConfig(int maxRetries, int delayMs)
 {
     maxRetryCount = maxRetries;

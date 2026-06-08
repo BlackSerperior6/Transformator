@@ -76,11 +76,6 @@ void SerialPort::SetCallbackFunction(std::function<void (const std::vector<char>
     dataCallback = callback;
 }
 
-void SerialPort::SetErrorCallbackFunction(std::function<void (int, int, const std::string &)> callback)
-{
-    errorCallback = callback;
-}
-
 bool SerialPort::Accept(const std::vector<char> & data)
 {
     if (!isRunning)

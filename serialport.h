@@ -26,8 +26,6 @@ public:
 
     void SetCallbackFunction(std::function<void(const std::vector<char>&)> callback);
 
-    void SetErrorCallbackFunction(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback);
-
 private:
     HANDLE hComPort;
     std::thread readThread;
@@ -36,7 +34,6 @@ private:
     DWORD baudRate;
 
     std::function<void(const std::vector<char>&)> dataCallback;
-    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
     std::string serialPortName;
 
     void ReadLoop()

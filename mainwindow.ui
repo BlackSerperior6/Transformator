@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>381</width>
     <height>600</height>
    </rect>
   </property>
@@ -14,12 +14,12 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QListWidget" name="listWidget">
+   <widget class="QListWidget" name="ConnectionsList">
     <property name="geometry">
      <rect>
       <x>0</x>
       <y>90</y>
-      <width>801</width>
+      <width>381</width>
       <height>381</height>
      </rect>
     </property>
@@ -52,7 +52,7 @@
     <widget class="QPushButton" name="DeleteConnection">
      <property name="geometry">
       <rect>
-       <x>220</x>
+       <x>200</x>
        <y>30</y>
        <width>171</width>
        <height>31</height>
@@ -62,26 +62,13 @@
       <string>Удалить подключение</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="ChangeConnection">
-     <property name="geometry">
-      <rect>
-       <x>430</x>
-       <y>30</y>
-       <width>181</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Отредактировать подключение</string>
-     </property>
-    </widget>
    </widget>
-   <widget class="QListView" name="ErrorLogs">
+   <widget class="QListWidget" name="ErrorsLogs">
     <property name="geometry">
      <rect>
       <x>0</x>
       <y>470</y>
-      <width>801</width>
+      <width>381</width>
       <height>91</height>
      </rect>
     </property>
@@ -92,7 +79,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>381</width>
      <height>21</height>
     </rect>
    </property>
