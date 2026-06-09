@@ -4,9 +4,9 @@
 ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int connectionCounter,
                                std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback) :
     QDialog(parent),
-    ui(new Ui::ConnectionEdit),
     portsConnection(connection),
     addedAConnection(false),
+    ui(new Ui::ConnectionEdit),
     errorCallback(callback)
 {
     ui->setupUi(this);
@@ -14,9 +14,11 @@ ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int
     PortType portOneType;
     PortType portTwoType;
 
+    bool isConnectionPresent = portsConnection != nullptr;
+
     updatedConnectionCounter = connectionCounter;
 
-    if (portsConnection == nullptr)
+    if (!isConnectionPresent)
     {
         portOneType = PortType::COMPort;
         portTwoType = PortType::COMPort;
@@ -36,19 +38,16 @@ ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int
 
         ui->COMEdit1->setVisible(true);
         ui->ComLabel1->setVisible(true);
+
+
+        if (isConnectionPresent)
+        {
+            SerialPort* portOne = (SerialPort*) portsConnection->firstPort;
+            ui->COMEdit1->setText(QString::fromStdString(portOne->GetPortName()));
+        }
+
     }
     else if (portOneType == PortType::TCPPort)
-    {
-        ui->COMEdit1->setVisible(false);
-        ui->ComLabel1->setVisible(false);
-
-        ui->IPEdit1->setVisible(true);
-        ui->IPLabel1->setVisible(true);
-        ui->NetLabel1->setVisible(true);
-        ui->NETPortEdit1->setVisible(true);
-    }
-
-    if (portTwoType == PortType::TCPPort)
     {
         ui->IPEdit2->setVisible(false);
         ui->IPLabel2->setVisible(false);
@@ -57,6 +56,37 @@ ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int
 
         ui->COMEdit2->setVisible(true);
         ui->ComLabel2->setVisible(true);
+
+        if (isConnectionPresent)
+        {
+            TcpPort* portOne = (TcpPort*) portsConnection->firstPort;
+
+            QStringList lines;
+
+            ui->NetLabel1->setText(QString::fromStdString(std::to_string(portOne->GetTargetNetworkPort())));
+
+            for (const auto& item : portOne->GetTargetIps())
+                 lines.append(QString::fromStdString(item));
+
+            ui->IPEdit1->setPlainText(lines.join('\n'));
+        }
+    }
+
+    if (portTwoType == PortType::COMPort)
+    {
+        ui->IPEdit2->setVisible(false);
+        ui->IPLabel2->setVisible(false);
+        ui->NetLabel2->setVisible(false);
+        ui->NETPortEdit2->setVisible(false);
+
+        ui->COMEdit2->setVisible(true);
+        ui->ComLabel2->setVisible(true);
+
+        if (isConnectionPresent)
+        {
+            SerialPort* portTwo = (SerialPort*) portsConnection->secondPort;
+            ui->COMEdit2->setText(QString::fromStdString(portTwo->GetPortName()));
+        }
     }
     else if (portTwoType == PortType::TCPPort)
     {
@@ -67,6 +97,20 @@ ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int
         ui->IPLabel2->setVisible(true);
         ui->NetLabel2->setVisible(true);
         ui->NETPortEdit2->setVisible(true);
+
+        if (isConnectionPresent)
+        {
+            TcpPort* portTwo = (TcpPort*) portsConnection->secondPort;
+
+            QStringList lines;
+
+            ui->NetLabel2->setText(QString::fromStdString(std::to_string(portTwo->GetTargetNetworkPort())));
+
+            for (const auto& item : portTwo->GetTargetIps())
+                 lines.append(QString::fromStdString(item));
+
+            ui->IPEdit2->setPlainText(lines.join('\n'));
+        }
     }
 }
 
@@ -154,17 +198,6 @@ PortsConnection* ConnectionEdit::CreateConnection()
     AbstractPort* firstPort;
     AbstractPort* secondport;
 
-    switch (ui->ConTypeSelectionFirst->currentIndex())
-    {
-        case 0: // Must make a COM port
-            firstPort = new SerialPort(ui->COMEdit1->text().toStdString(), 0, PortType::COMPort, CBR_9600, secondport);
-            break;
-        case 1: // Must make a TCP port
-            firstPort = new TcpPort(ui->NETPortEdit1->text().toInt(), 0, PortType::TCPPort, secondport,
-                                    ParseIpInput(ui->IPEdit1));
-            break;
-    }
-
     switch (ui->ConTypeSelectionSecond->currentIndex())
     {
         case 0: // Must make a COM port
@@ -176,7 +209,37 @@ PortsConnection* ConnectionEdit::CreateConnection()
             break;
     }
 
+    switch (ui->ConTypeSelectionFirst->currentIndex())
+    {
+        case 0: // Must make a COM port
+            firstPort = new SerialPort(ui->COMEdit1->text().toStdString(), 0, PortType::COMPort, CBR_9600, secondport);
+            break;
+        case 1: // Must make a TCP port
+            firstPort = new TcpPort(ui->NETPortEdit1->text().toInt(), 0, PortType::TCPPort, secondport,
+                                    ParseIpInput(ui->IPEdit1));
+            break;
+    }
+
     return new PortsConnection(firstPort, secondport);
+}
+
+std::set<std::string> ConnectionEdit::ParseIpInput(QPlainTextEdit* plainText)
+{
+    std::set<std::string> result;
+
+    QString text = plainText->toPlainText();
+
+    QStringList lines = text.split('\n');
+
+    for (const QString& line : lines)
+    {
+        std::string str = line.trimmed().toStdString();
+
+        if (!str.empty())
+            result.insert(str);
+    }
+
+    return result;
 }
 
 

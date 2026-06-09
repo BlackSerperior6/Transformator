@@ -43,24 +43,7 @@ private:
 
     PortsConnection* CreateConnection();
 
-    std::set<std::string> ParseIpInput(QPlainTextEdit* plainText)
-    {
-        std::set<std::string> result;
-
-        QString text = plainText->toPlainText();
-
-        QStringList lines = text.split('\n');
-
-        for (const QString& line : lines)
-        {
-            std::string str = line.trimmed().toStdString();
-
-            if (!str.empty())
-                result.insert(str);
-        }
-
-        return result;
-    }
+    std::set<std::string> ParseIpInput(QPlainTextEdit* plainText);
 };
 
 #endif // CONNECTIONEDIT_H

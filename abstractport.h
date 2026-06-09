@@ -13,11 +13,11 @@ class AbstractPort
 public:
     AbstractPort(int conId, PortType type, AbstractPort* target = nullptr);
 
-    virtual bool Accept(const std::vector<char> & data);
+    virtual bool Accept(const std::vector<char> & data) = 0;
 
-    virtual bool Start();
+    virtual bool Start() = 0;
 
-    virtual void Stop();
+    virtual void Stop() = 0;
 
     void SetErrorCallback(std::function<void(int, int, const std::string&)> callback);
 

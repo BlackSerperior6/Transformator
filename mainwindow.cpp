@@ -30,7 +30,7 @@ void MainWindow::WriteErrorToLogs(int connectionId, int errorCode, const std::st
 
 void MainWindow::on_CreateConnectionButton_clicked()
 {
-    ConnectionEdit* editWindow = new ConnectionEdit(this, nullptr, connectionCounter);
+    ConnectionEdit* editWindow = new ConnectionEdit(nullptr, nullptr, connectionCounter);
 
     editWindow->setModal(true);
     editWindow->exec();
@@ -38,6 +38,7 @@ void MainWindow::on_CreateConnectionButton_clicked()
     if (editWindow->addedAConnection)
     {
         QListWidgetItem *item = new QListWidgetItem;
+        item->setText(QString::fromStdString("Current connection: " + std::to_string(connectionCounter)));
         PortsConnection* connection = editWindow->portsConnection;
         ui->ConnectionsList->addItem(item);
         ui->ConnectionsList->setItemWidget(item, connection);

@@ -69,11 +69,8 @@ bool SerialPort::Start()
     PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_TXCLEAR);
 
     StartReading();
-}
 
-void SerialPort::SetCallbackFunction(std::function<void (const std::vector<char> &)> callback)
-{
-    dataCallback = callback;
+    return true;
 }
 
 bool SerialPort::Accept(const std::vector<char> & data)
@@ -98,6 +95,25 @@ bool SerialPort::Accept(const std::vector<char> & data)
     return true;
 }
 
+void SerialPort::Stop()
+{
+    isRunning = false;
+
+    if (readThread.joinable())
+        readThread.join();
+
+    if (hComPort != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hComPort);
+        hComPort = INVALID_HANDLE_VALUE;
+    }
+}
+
+void SerialPort::SetCallbackFunction(std::function<void (const std::vector<char> &)> callback)
+{
+    dataCallback = callback;
+}
+
 bool SerialPort::StartReading()
 {
     if (hComPort == INVALID_HANDLE_VALUE)
@@ -108,20 +124,38 @@ bool SerialPort::StartReading()
 
     isRunning = true;
     readThread = std::thread(&SerialPort::ReadLoop, this);
+    return true;
 }
 
-void SerialPort::Stop()
+void SerialPort::ReadLoop()
 {
-    isRunning = false;
+    const int BUFFER_SIZE = 4096;
+    std::vector<char> buffer(BUFFER_SIZE);
 
-    if (readThread.joinable())
+    while (isRunning)
     {
-        readThread.join();
-    }
+        DWORD bytesRead = 0;
 
-    if (hComPort != INVALID_HANDLE_VALUE)
-    {
-        CloseHandle(hComPort);
-        hComPort = INVALID_HANDLE_VALUE;
+        if (!ReadFile(hComPort, buffer.data(), BUFFER_SIZE - 1, &bytesRead, NULL))
+        {
+            DWORD error = GetLastError();
+
+            if (error != ERROR_IO_PENDING && error != ERROR_SUCCESS)
+            {
+                errorCallback(connectionId, 0, std::to_string(error));
+                break;
+            }
+        }
+
+        if (targetPort != nullptr)
+            targetPort->Accept(buffer);
+
+        // Small sleep to prevent CPU spinning
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+}
+
+std::string SerialPort::GetPortName()
+{
+    return portName;
 }

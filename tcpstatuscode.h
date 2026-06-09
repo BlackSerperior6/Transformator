@@ -4,14 +4,8 @@
 enum class TcpStatusCode
 {
     SUCCESS = 200,
-    BAD_REQUEST = 400,
-    UNAUTHORIZED = 401,
     FORBIDDEN = 403,
-    NOT_FOUND = 404,
-    INTERNAL_ERROR = 500,
-    SERVICE_UNAVAILABLE = 503,
-    TIMEOUT = 408,
-    RETRY_LATER = 429
+    TIMEOUT = 408
 };
 
 #endif // TCPSTATUSCODE_H

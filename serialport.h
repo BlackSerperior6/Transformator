@@ -20,11 +20,11 @@ public:
 
     bool Start();
 
-    bool StartReading();
-
     void Stop();
 
     void SetCallbackFunction(std::function<void(const std::vector<char>&)> callback);
+
+    std::string GetPortName();
 
 private:
     HANDLE hComPort;
@@ -36,35 +36,9 @@ private:
     std::function<void(const std::vector<char>&)> dataCallback;
     std::string serialPortName;
 
-    void ReadLoop()
-    {
-        const int BUFFER_SIZE = 4096;
-        std::vector<char> buffer(BUFFER_SIZE);
+    bool StartReading();
 
-        while (isRunning)
-        {
-            DWORD bytesRead = 0;
-
-            if (!ReadFile(hComPort, buffer.data(), BUFFER_SIZE - 1, &bytesRead, NULL))
-            {
-                DWORD error = GetLastError();
-
-                if (error != ERROR_IO_PENDING && error != ERROR_SUCCESS)
-                {
-                    errorCallback(connectionId, 0, std::to_string(error));
-                    break;
-                }
-            }
-
-            if (targetPort != nullptr)
-                targetPort->Accept(buffer);
-
-            // Small sleep to prevent CPU spinning
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-
-    }
-
+    void ReadLoop();
 };
 
 #endif // SERIALPORT_H
