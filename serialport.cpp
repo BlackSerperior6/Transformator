@@ -153,7 +153,7 @@ void SerialPort::ReadLoop()
         {
             DWORD error = GetLastError();
 
-            if (error != ERROR_IO_PENDING && error != ERROR_SUCCESS)
+            if (error != ERROR_SUCCESS)
             {
                 if (errorCallback)
                     errorCallback(connectionId, 0, std::to_string(error));
@@ -162,7 +162,7 @@ void SerialPort::ReadLoop()
             }
         }
 
-        if (targetPort != nullptr)
+        if (bytesRead > 0 && targetPort != nullptr)
             targetPort->Accept(buffer);
     }
 }
