@@ -13,6 +13,8 @@ class AbstractPort
 public:
     AbstractPort(int conId, PortType type, AbstractPort* target = nullptr);
 
+    virtual ~AbstractPort();
+
     virtual bool Accept(const std::vector<char> & data) = 0;
 
     virtual bool Start() = 0;

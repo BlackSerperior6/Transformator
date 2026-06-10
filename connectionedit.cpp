@@ -180,17 +180,17 @@ void ConnectionEdit::on_SaveConnectionButton_clicked()
     }
     else
     {
-        addedAConnection = true;
         updatedConnectionCounter++;
     }
+
+    addedAConnection = true;
 
     portsConnection = CreateConnection();
 
     portsConnection->firstPort->SetErrorCallback(errorCallback);
     portsConnection->secondPort->SetErrorCallback(errorCallback);
 
-    portsConnection->secondPort->Start();
-    portsConnection->firstPort->Start();
+    close();
 }
 
 PortsConnection* ConnectionEdit::CreateConnection()
@@ -201,10 +201,10 @@ PortsConnection* ConnectionEdit::CreateConnection()
     switch (ui->ConTypeSelectionSecond->currentIndex())
     {
         case 0: // Must make a COM port
-            secondport = new SerialPort(ui->COMEdit2->text().toStdString(), 0, PortType::COMPort, CBR_9600, nullptr);
+            secondport = new SerialPort(ui->COMEdit2->text().toStdString(), updatedConnectionCounter, PortType::COMPort, CBR_9600, nullptr);
             break;
         case 1: // Must make a TCP port
-            secondport = new TcpPort(ui->NETPortEdit2->text().toInt(), 0, PortType::TCPPort, nullptr,
+            secondport = new TcpPort(ui->NETPortEdit2->text().toInt(), updatedConnectionCounter, PortType::TCPPort, nullptr,
                                     ParseIpInput(ui->IPEdit2));
             break;
     }
@@ -212,10 +212,10 @@ PortsConnection* ConnectionEdit::CreateConnection()
     switch (ui->ConTypeSelectionFirst->currentIndex())
     {
         case 0: // Must make a COM port
-            firstPort = new SerialPort(ui->COMEdit1->text().toStdString(), 0, PortType::COMPort, CBR_9600, secondport);
+            firstPort = new SerialPort(ui->COMEdit1->text().toStdString(), updatedConnectionCounter, PortType::COMPort, CBR_9600, secondport);
             break;
         case 1: // Must make a TCP port
-            firstPort = new TcpPort(ui->NETPortEdit1->text().toInt(), 0, PortType::TCPPort, secondport,
+            firstPort = new TcpPort(ui->NETPortEdit1->text().toInt(), updatedConnectionCounter, PortType::TCPPort, secondport,
                                     ParseIpInput(ui->IPEdit1));
             break;
     }

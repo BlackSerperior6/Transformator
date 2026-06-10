@@ -134,9 +134,7 @@ bool TcpPort::StartServer()
     int reuse = 1;
 
     if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(reuse)) == SOCKET_ERROR)
-    {
         CallErrorCallback(WSAGetLastError(), "Failed to set SO_REUSEADDR");
-    }
 
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
@@ -174,9 +172,7 @@ void TcpPort::StopServer()
         std::lock_guard<std::mutex> lock(clientsMutex);
 
         for (auto& pair : connectedClients)
-        {
             closesocket(pair.first);
-        }
 
         connectedClients.clear();
     }
@@ -261,9 +257,7 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
             send(clientSocket, statusResponse.c_str(), static_cast<int>(statusResponse.size()), 0);
         }
         else if (bytesReceived == 0)
-        {
             break;
-        }
         else
         {
             int error = WSAGetLastError();

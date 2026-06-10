@@ -5,6 +5,6 @@ PortsConnection::PortsConnection(AbstractPort* portOne,  AbstractPort* portTwo) 
 
 PortsConnection::~PortsConnection()
 {
-    secondPort->Stop();
-    firstPort->Stop();
+    delete firstPort;
+    delete secondPort;
 }

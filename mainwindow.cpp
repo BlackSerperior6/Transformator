@@ -30,18 +30,27 @@ void MainWindow::WriteErrorToLogs(int connectionId, int errorCode, const std::st
 
 void MainWindow::on_CreateConnectionButton_clicked()
 {
-    ConnectionEdit* editWindow = new ConnectionEdit(nullptr, nullptr, connectionCounter);
+    ConnectionEdit* editWindow = new ConnectionEdit(nullptr, nullptr, connectionCounter,
+                                                    [this](int connectionNumber, int errorCode, const std::string& errorMessage)
+    {
+        this->WriteErrorToLogs(connectionNumber, errorCode, errorMessage);
+    });
 
     editWindow->setModal(true);
     editWindow->exec();
 
     if (editWindow->addedAConnection)
     {
+        connectionCounter = editWindow->updatedConnectionCounter;
         QListWidgetItem *item = new QListWidgetItem;
         item->setText(QString::fromStdString("Current connection: " + std::to_string(connectionCounter)));
         PortsConnection* connection = editWindow->portsConnection;
+        connection->setParent(ui->ConnectionsList);
         ui->ConnectionsList->addItem(item);
         ui->ConnectionsList->setItemWidget(item, connection);
+
+        connection->secondPort->Start();
+        connection->firstPort->Start();
     }
 }
 
@@ -49,12 +58,6 @@ void MainWindow::on_DeleteConnection_clicked()
 {
     if (currentConnectionIndex == -1)
         return;
-
-    QListWidgetItem *it = ui->ConnectionsList->item(currentConnectionIndex);
-
-    QWidget *widget = ui->ConnectionsList->itemWidget(it);
-
-    delete widget;
 
     delete ui->ConnectionsList->takeItem(currentConnectionIndex);
 
@@ -70,8 +73,17 @@ void MainWindow::on_ConnectionsList_itemDoubleClicked(QListWidgetItem *item)
 {
     PortsConnection *connection =  (PortsConnection*) ui->ConnectionsList->itemWidget(item);
 
-    ConnectionEdit *win = new ConnectionEdit(this, connection, connectionCounter);
+    ConnectionEdit *win = new ConnectionEdit(this, connection, connectionCounter, [this](int connectionNumber, int errorCode, const std::string& errorMessage)
+    {
+        this->WriteErrorToLogs(connectionNumber, errorCode, errorMessage);
+    });
 
     win->setModal(true);
     win->exec();
+
+    if (win->addedAConnection)
+    {
+        connection->secondPort->Start();
+        connection->firstPort->Start();
+    }
 }

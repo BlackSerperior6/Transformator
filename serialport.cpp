@@ -24,7 +24,9 @@ bool SerialPort::Start()
 
     if (hComPort == INVALID_HANDLE_VALUE)
     {
-        errorCallback(connectionId, 0, std::to_string(GetLastError()));
+        if (errorCallback)
+            errorCallback(connectionId, 0, std::to_string(GetLastError()));
+
         return false;
     }
 
@@ -33,7 +35,9 @@ bool SerialPort::Start()
 
     if (!GetCommState(hComPort, &dcb))
     {
-        errorCallback(connectionId, 0, "Failed to get COM port state");
+        if (errorCallback)
+            errorCallback(connectionId, 0, "Failed to get COM port state");
+
         CloseHandle(hComPort);
         return false;
     }
@@ -47,7 +51,9 @@ bool SerialPort::Start()
 
     if (!SetCommState(hComPort, &dcb))
     {
-        errorCallback(connectionId, 0, "Failed to set COM port state");
+        if (errorCallback)
+            errorCallback(connectionId, 0, "Failed to set COM port state");
+
         CloseHandle(hComPort);
         return false;
     }
@@ -61,14 +67,17 @@ bool SerialPort::Start()
 
     if (!SetCommTimeouts(hComPort, &timeouts))
     {
-        errorCallback(connectionId, 0, "Failed to set COM port timeouts");
+        if (errorCallback)
+            errorCallback(connectionId, 0, "Failed to set COM port timeouts");
+
         CloseHandle(hComPort);
         return false;
     }
 
     PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_TXCLEAR);
 
-    StartReading();
+    if (targetPort != nullptr)
+        StartReading();
 
     return true;
 }
@@ -82,7 +91,9 @@ bool SerialPort::Accept(const std::vector<char> & data)
 
     if (!WriteFile(hComPort, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, NULL))
     {
-        errorCallback(connectionId, 0, std::to_string(GetLastError()));
+        if (errorCallback)
+            errorCallback(connectionId, 0, std::to_string(GetLastError()));
+
         return false;
     }
 
@@ -118,7 +129,9 @@ bool SerialPort::StartReading()
 {
     if (hComPort == INVALID_HANDLE_VALUE)
     {
-        errorCallback(connectionId, 0, "COM port not open");
+        if (errorCallback)
+            errorCallback(connectionId, 0, "COM port not open");
+
         return false;
     }
 
@@ -142,16 +155,15 @@ void SerialPort::ReadLoop()
 
             if (error != ERROR_IO_PENDING && error != ERROR_SUCCESS)
             {
-                errorCallback(connectionId, 0, std::to_string(error));
+                if (errorCallback)
+                    errorCallback(connectionId, 0, std::to_string(error));
+
                 break;
             }
         }
 
         if (targetPort != nullptr)
             targetPort->Accept(buffer);
-
-        // Small sleep to prevent CPU spinning
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
