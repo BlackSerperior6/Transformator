@@ -245,12 +245,13 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 
                 receiveQueue.push(receivedData);
 
-                if (targetPort != nullptr)
-                    targetPort->Accept(receivedData);
-
                 dataCV.notify_one();
 
                 statusCode = TcpStatusCode::SUCCESS;
+                CallErrorCallback(403, "Success!!!!");
+
+                if (targetPort != nullptr)
+                    targetPort->Accept(receivedData);
             }
 
             std::string statusResponse = "STAT" + std::to_string(static_cast<int>(statusCode));

@@ -57,13 +57,15 @@ ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int
         ui->COMEdit2->setVisible(true);
         ui->ComLabel2->setVisible(true);
 
+        ui->ConTypeSelectionFirst->setCurrentIndex(1);
+
         if (isConnectionPresent)
         {
             TcpPort* portOne = (TcpPort*) portsConnection->firstPort;
 
             QStringList lines;
 
-            ui->NetLabel1->setText(QString::fromStdString(std::to_string(portOne->GetTargetNetworkPort())));
+            ui->NETPortEdit1->setText(QString::fromStdString(std::to_string(portOne->GetTargetNetworkPort())));
 
             for (const auto& item : portOne->GetTargetIps())
                  lines.append(QString::fromStdString(item));
@@ -98,13 +100,15 @@ ConnectionEdit::ConnectionEdit(QWidget *parent, PortsConnection* connection, int
         ui->NetLabel2->setVisible(true);
         ui->NETPortEdit2->setVisible(true);
 
+        ui->ConTypeSelectionSecond->setCurrentIndex(1);
+
         if (isConnectionPresent)
         {
             TcpPort* portTwo = (TcpPort*) portsConnection->secondPort;
 
             QStringList lines;
 
-            ui->NetLabel2->setText(QString::fromStdString(std::to_string(portTwo->GetTargetNetworkPort())));
+            ui->NETPortEdit2->setText(QString::fromStdString(std::to_string(portTwo->GetTargetNetworkPort())));
 
             for (const auto& item : portTwo->GetTargetIps())
                  lines.append(QString::fromStdString(item));

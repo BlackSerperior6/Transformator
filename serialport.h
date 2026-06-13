@@ -8,6 +8,7 @@
 #include <atomic>
 #include <functional>
 #include <vector>
+#include <mutex>
 
 class SerialPort : public AbstractPort
 {
@@ -28,7 +29,9 @@ public:
 
 private:
     HANDLE hComPort;
+    std::mutex mtx;
     std::thread readThread;
+    std::vector<std::thread> writeThreads;
     std::atomic<bool> isRunning;
     std::string portName;
     DWORD baudRate;
@@ -37,6 +40,8 @@ private:
     std::string serialPortName;
 
     bool StartReading();
+
+    void AcceptThread(const std::vector<char> & data);
 
     void ReadLoop();
 };
