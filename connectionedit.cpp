@@ -179,8 +179,7 @@ void ConnectionEdit::on_SaveConnectionButton_clicked()
 {
     if (portsConnection != nullptr)
     {
-        portsConnection->firstPort->Stop();
-        portsConnection->secondPort->Stop();
+        delete  portsConnection;
     }
     else
     {

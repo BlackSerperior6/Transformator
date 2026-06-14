@@ -236,6 +236,7 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
                 std::string errorMsg = "Rejected connection from unauthorized IP: " + std::string(clientIP);
                 statusCode = TcpStatusCode::FORBIDDEN;
                 CallErrorCallback(403, errorMsg);
+                return;
             }
 
             std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
@@ -248,7 +249,6 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
                 dataCV.notify_one();
 
                 statusCode = TcpStatusCode::SUCCESS;
-                CallErrorCallback(403, "Success!!!!");
 
                 if (targetPort != nullptr)
                     targetPort->Accept(receivedData);
@@ -263,7 +263,7 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
         {
             int error = WSAGetLastError();
 
-            if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT)
+            if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT && error != WSAECONNABORTED)
             {
                 CallErrorCallback(error, "Receive error from client " + clientIP);
                 break;

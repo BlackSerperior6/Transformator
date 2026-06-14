@@ -46,10 +46,15 @@ bool SerialPort::Start()
     dcb.ByteSize = 8;
     dcb.Parity = NOPARITY;
     dcb.StopBits = ONESTOPBIT;
-    dcb.fRtsControl = RTS_CONTROL_ENABLE;
-    dcb.fOutxCtsFlow = FALSE;
-    dcb.fOutxDsrFlow = FALSE;
-    dcb.fDtrControl = DTR_CONTROL_ENABLE;
+    dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
+    dcb.fDtrControl = DTR_CONTROL_HANDSHAKE;
+    dcb.fOutxCtsFlow = TRUE;
+    dcb.fOutxDsrFlow = TRUE;
+    dcb.fOutX = FALSE;
+    dcb.fInX = FALSE;
+    dcb.fNull = FALSE;
+    dcb.fErrorChar = FALSE;
+    dcb.fAbortOnError = FALSE;
 
     if (!SetCommState(hComPort, &dcb))
     {
@@ -105,6 +110,8 @@ void SerialPort::Stop()
             i.join();
     }
 
+    writeThreads.clear();
+
     if (hComPort != INVALID_HANDLE_VALUE)
     {
         CloseHandle(hComPort);
@@ -137,7 +144,10 @@ void SerialPort::AcceptThread(const std::vector<char>& data)
     std::lock_guard<std::mutex> lock(mtx);
 
     if (!isRunning)
+    {
         errorCallback(connectionId, 0, "COM not running!");
+        return;
+    }
 
     DWORD bytesWritten;
 
@@ -155,7 +165,12 @@ void SerialPort::AcceptThread(const std::vector<char>& data)
     }
 
     if (bytesWritten != data.size())
+    {
         errorCallback(connectionId, 0, "Failed to write all data!");
+        return;
+    }
+
+    errorCallback(connectionId, 0, "Port accepted data!");
 }
 
 void SerialPort::ReadLoop()
@@ -180,7 +195,7 @@ void SerialPort::ReadLoop()
             }
         }
 
-        if (bytesRead > 0 && targetPort != nullptr)
+        if (bytesRead > 0)
             targetPort->Accept(buffer);
     }
 }
