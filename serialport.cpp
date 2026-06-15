@@ -101,9 +101,6 @@ void SerialPort::Stop()
 {
     isRunning = false;
 
-    if (readThread.joinable())
-        readThread.join();
-
     for (auto& i : writeThreads)
     {
         if (i.joinable())
@@ -111,6 +108,11 @@ void SerialPort::Stop()
     }
 
     writeThreads.clear();
+
+    CancelIoEx(hComPort, NULL);
+
+    if (readThread.joinable())
+        readThread.join();
 
     if (hComPort != INVALID_HANDLE_VALUE)
     {
@@ -169,8 +171,6 @@ void SerialPort::AcceptThread(const std::vector<char>& data)
         errorCallback(connectionId, 0, "Failed to write all data!");
         return;
     }
-
-    errorCallback(connectionId, 0, "Port accepted data!");
 }
 
 void SerialPort::ReadLoop()
@@ -186,7 +186,7 @@ void SerialPort::ReadLoop()
         {
             DWORD error = GetLastError();
 
-            if (error != ERROR_SUCCESS)
+            if (error != ERROR_SUCCESS && error != ERROR_OPERATION_ABORTED)
             {
                 if (errorCallback)
                     errorCallback(connectionId, 0, std::to_string(error));

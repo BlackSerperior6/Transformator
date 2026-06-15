@@ -50,12 +50,12 @@ void TcpPort::Stop()
 
 bool TcpPort::Accept(const std::vector<char> &data)
 {
-    if (!isRunning)
+    if (!isRunning || targetPort != nullptr)
         return false;
 
     bool allSuccess = true;
 
-    for (size_t i = 0; i < clientConnections.size(); i++)
+    for (size_t i = 0; i < connectionsToServers.size(); i++)
     {
         if (!SendData(i, data))
             allSuccess = false;
@@ -66,7 +66,7 @@ bool TcpPort::Accept(const std::vector<char> &data)
 
 bool TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
 {
-    if (targetIndex >= connectedClients.size())
+    if (targetIndex >= connectionsToServers.size())
     {
         if (errorCallback)
             errorCallback(connectionId, 400, "Invalid target index: " + std::to_string(targetIndex));
@@ -78,7 +78,7 @@ bool TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
 
     for (int attempt = 1; attempt <= maxRetryCount; attempt++)
     {
-        if (clientConnections[targetIndex]->SendData(data, responseCode, 5000))
+        if (connectionsToServers[targetIndex]->SendData(data, responseCode, 5000))
         {
             if (responseCode == TcpStatusCode::SUCCESS)
                 return true;
@@ -86,7 +86,7 @@ bool TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
             {
                 if (errorCallback)
                 {
-                    std::string errorMsg = "Failed to send to " + clientConnections[targetIndex]->ipAddress +
+                    std::string errorMsg = "Failed to send to " + connectionsToServers[targetIndex]->ipAddress +
                                           " (attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetryCount) +
                                           "): Status code " + std::to_string(static_cast<int>(responseCode));
 
@@ -101,7 +101,7 @@ bool TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
         {
             if (errorCallback)
             {
-                std::string errorMsg = "Send timeout/failed to " + clientConnections[targetIndex]->ipAddress +
+                std::string errorMsg = "Send timeout/failed to " + connectionsToServers[targetIndex]->ipAddress +
                                       " (attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetryCount) + ")";
 
                 errorCallback(connectionId, static_cast<int>(TcpStatusCode::TIMEOUT), errorMsg);
@@ -171,10 +171,10 @@ void TcpPort::StopServer()
     {
         std::lock_guard<std::mutex> lock(clientsMutex);
 
-        for (auto& pair : connectedClients)
+        for (auto& pair : connectionsToClients)
             closesocket(pair.first);
 
-        connectedClients.clear();
+        connectionsToClients.clear();
     }
 
     if (acceptThread.joinable())
@@ -211,7 +211,7 @@ void TcpPort::ServerAcceptLoop()
 
         {
             std::lock_guard<std::mutex> lock(clientsMutex);
-            connectedClients[clientSocket] = clientAddr;
+            connectionsToClients[clientSocket] = clientAddr;
         }
 
         clientThreads.emplace_back(&TcpPort::ServerHandleClient, this, clientSocket, std::string(clientIP));
@@ -236,22 +236,23 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
                 std::string errorMsg = "Rejected connection from unauthorized IP: " + std::string(clientIP);
                 statusCode = TcpStatusCode::FORBIDDEN;
                 CallErrorCallback(403, errorMsg);
-                return;
             }
-
-            std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
-
+            else
             {
-                std::lock_guard<std::mutex> lock(dataMutex);
+                std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
 
-                receiveQueue.push(receivedData);
+                {
+                    std::lock_guard<std::mutex> lock(dataMutex);
 
-                dataCV.notify_one();
+                    receiveQueue.push(receivedData);
 
-                statusCode = TcpStatusCode::SUCCESS;
+                    dataCV.notify_one();
 
-                if (targetPort != nullptr)
-                    targetPort->Accept(receivedData);
+                    statusCode = TcpStatusCode::SUCCESS;
+
+                    if (targetPort != nullptr)
+                        targetPort->Accept(receivedData);
+                }
             }
 
             std::string statusResponse = "STAT" + std::to_string(static_cast<int>(statusCode));
@@ -273,7 +274,7 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 
     {
         std::lock_guard<std::mutex> lock(clientsMutex);
-        connectedClients.erase(clientSocket);
+        connectionsToClients.erase(clientSocket);
     }
 
     closesocket(clientSocket);
@@ -309,7 +310,7 @@ bool TcpPort::StartClient()
                 }
             );
 
-            clientConnections.push_back(std::move(connection));
+            connectionsToServers.push_back(std::move(connection));
         }
         else
         {
@@ -318,15 +319,15 @@ bool TcpPort::StartClient()
         }
     }
 
-    return !clientConnections.empty();
+    return !connectionsToServers.empty();
 }
 
 void TcpPort::StopClient()
 {
-    for (auto& connection : clientConnections)
+    for (auto& connection : connectionsToServers)
         connection->Disconnect();
 
-    clientConnections.clear();
+    connectionsToServers.clear();
 }
 
 int TcpPort::GetTargetNetworkPort()

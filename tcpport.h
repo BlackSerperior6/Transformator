@@ -56,13 +56,14 @@ private:
 
     // Server side (we listen, have target port)
     SOCKET listenSocket;
-    std::thread acceptThread;
+    std::thread listenThread;
     std::vector<std::thread> clientThreads;
     std::mutex clientsMutex;
-    std::map<SOCKET, sockaddr_in> connectedClients;
+    std::map<SOCKET, sockaddr_in> connectionsToClients;
 
     //Client side (we send, no target port)
-    std::vector<std::unique_ptr<TCPClientConnection>> clientConnections;
+    std::vector<std::unique_ptr<TCPClientConnection>> connectionsToServers;
+    std::vector<std::thread> acceptThreads;
 
     std::function<void(const std::vector<char>&)> receiveCallback;
     std::function<void(const std::string&, const std::vector<char>&)> serverReceiveCallback;

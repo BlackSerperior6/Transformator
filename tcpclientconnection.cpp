@@ -63,9 +63,7 @@ void TCPClientConnection::Disconnect()
 bool TCPClientConnection::SendData(const std::vector<char>& data, TcpStatusCode& responseCode, int timeoutMs)
 {
     if (!connected || socket == INVALID_SOCKET)
-    {
         return false;
-    }
 
     std::unique_lock<std::mutex> lock(responseMutex);
     waitingForResponse = true;
@@ -89,7 +87,7 @@ bool TCPClientConnection::SendData(const std::vector<char>& data, TcpStatusCode&
     }
 
     waitingForResponse = false;
-    responseCode = TcpStatusCode::TIMEOUT;
+    responseCode = TcpStatusCode::SUCCESS;
     return false;
 }
 
@@ -124,9 +122,7 @@ void TCPClientConnection::StartReceive(std::function<void(const std::vector<char
                     {
                         int code = 0;
                         for (int i = 4; i < 8 && i < bytesReceived; i++)
-                        {
                             code = code * 10 + (receivedData[i] - '0');
-                        }
 
                         responseCallback(static_cast<TcpStatusCode>(code));
                     }
@@ -134,23 +130,17 @@ void TCPClientConnection::StartReceive(std::function<void(const std::vector<char
                 else
                 {
                     if (callback)
-                    {
                         callback(receivedData);
-                    }
                 }
             }
             else if (bytesReceived == 0)
-            {
                 break;
-            }
             else
             {
                 int error = WSAGetLastError();
 
                 if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT)
-                {
                     break;
-                }
             }
         }
 
