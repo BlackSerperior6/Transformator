@@ -155,7 +155,7 @@ bool TcpPort::StartServer()
         return false;
     }
 
-    acceptThread = std::thread(&TcpPort::ServerAcceptLoop, this);
+    listenThread = std::thread(&TcpPort::ServerAcceptLoop, this);
 
     return true;
 }
@@ -177,8 +177,8 @@ void TcpPort::StopServer()
         connectionsToClients.clear();
     }
 
-    if (acceptThread.joinable())
-        acceptThread.join();
+    if (listenThread.joinable())
+        listenThread.join();
 
     for (auto& thread : clientThreads)
     {

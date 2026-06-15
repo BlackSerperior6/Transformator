@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>381</width>
+    <width>564</width>
     <height>600</height>
    </rect>
   </property>
@@ -19,7 +19,7 @@
      <rect>
       <x>0</x>
       <y>90</y>
-      <width>381</width>
+      <width>571</width>
       <height>381</height>
      </rect>
     </property>
@@ -62,13 +62,26 @@
       <string>Удалить подключение</string>
      </property>
     </widget>
+    <widget class="QPushButton" name="ClearErrorLogsButton">
+     <property name="geometry">
+      <rect>
+       <x>390</x>
+       <y>30</y>
+       <width>171</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Очистить лог ошибок</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QListWidget" name="ErrorsLogs">
     <property name="geometry">
      <rect>
       <x>0</x>
       <y>470</y>
-      <width>381</width>
+      <width>571</width>
       <height>91</height>
      </rect>
     </property>
@@ -79,7 +92,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>381</width>
+     <width>564</width>
      <height>21</height>
     </rect>
    </property>

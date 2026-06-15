@@ -21,8 +21,8 @@ void MainWindow::WriteErrorToLogs(int connectionId, int errorCode, const std::st
 {
     std::lock_guard<std::mutex> lock(mtx);
 
-    std::string finalErrorText = "Error in connection " + std::to_string(connectionId) + ": "
-            + "Error code - " + std::to_string(errorCode) + ", " + errorText;
+    std::string finalErrorText = "Ошибка в соединении: " + std::to_string(connectionId) + ": "
+            + "Код ошибки: - " + std::to_string(errorCode) + ", " + errorText;
 
     new QListWidgetItem(tr(finalErrorText.c_str()), ui->ErrorsLogs);
 }
@@ -43,7 +43,7 @@ void MainWindow::on_CreateConnectionButton_clicked()
     {
         connectionCounter = editWindow->updatedConnectionCounter;
         QListWidgetItem *item = new QListWidgetItem;
-        item->setText(QString::fromStdString("Current connection: " + std::to_string(connectionCounter)));
+        item->setText(QString::fromStdString("Номер подключения: " + std::to_string(connectionCounter)));
         PortsConnection* connection = editWindow->portsConnection;
         connection->setParent(ui->ConnectionsList);
         ui->ConnectionsList->addItem(item);
@@ -86,4 +86,10 @@ void MainWindow::on_ConnectionsList_itemDoubleClicked(QListWidgetItem *item)
         connection->secondPort->Start();
         connection->firstPort->Start();
     }
+}
+
+void MainWindow::on_ClearErrorLogsButton_clicked()
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    ui->ErrorsLogs->clear();
 }

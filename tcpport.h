@@ -63,7 +63,6 @@ private:
 
     //Client side (we send, no target port)
     std::vector<std::unique_ptr<TCPClientConnection>> connectionsToServers;
-    std::vector<std::thread> acceptThreads;
 
     std::function<void(const std::vector<char>&)> receiveCallback;
     std::function<void(const std::string&, const std::vector<char>&)> serverReceiveCallback;

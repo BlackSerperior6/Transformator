@@ -32,6 +32,8 @@ private slots:
 
     void on_ConnectionsList_itemDoubleClicked(QListWidgetItem *item);
 
+    void on_ClearErrorLogsButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 
