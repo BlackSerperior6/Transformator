@@ -1,7 +1,6 @@
 #include "tcpclientconnection.h"
 
-TCPClientConnection::TCPClientConnection() : socket(INVALID_SOCKET), connected(false),
-    lastStatusCode(TcpStatusCode::SUCCESS), waitingForResponse(false) {}
+TCPClientConnection::TCPClientConnection() : socket(INVALID_SOCKET), connected(false) {}
 
 TCPClientConnection::~TCPClientConnection()
 {
@@ -37,7 +36,6 @@ bool TCPClientConnection::Connect(const std::string &ip, int portNum, int timeou
     }
 
     connected = true;
-    lastStatusCode = TcpStatusCode::SUCCESS;
     return true;
 }
 
@@ -45,106 +43,46 @@ void TCPClientConnection::Disconnect()
 {
     connected = false;
 
-    if (waitingForResponse)
-        responseCV.notify_all();
-
     if (socket != INVALID_SOCKET)
     {
         closesocket(socket);
         socket = INVALID_SOCKET;
     }
-
-    if (receiveThread.joinable())
-    {
-        receiveThread.join();
-    }
 }
 
-bool TCPClientConnection::SendData(const std::vector<char>& data, TcpStatusCode& responseCode, int timeoutMs)
+void TCPClientConnection::SendData(const std::vector<char>& data, int timeBetweenAttempts)
 {
     if (!connected || socket == INVALID_SOCKET)
-        return false;
+        return;
 
-    std::unique_lock<std::mutex> lock(responseMutex);
-    waitingForResponse = true;
-    lastStatusCode = TcpStatusCode::TIMEOUT;
+    TcpStatusCode finalCode = TcpStatusCode::UNKNOWN;
 
+    for (int i = 0; i <= comAttempts; i++)
     {
-        std::lock_guard<std::mutex> sendLock(sendMutex);
-
-        if (send(socket, data.data(), static_cast<int>(data.size()), 0) == SOCKET_ERROR)
         {
-            waitingForResponse = false;
-            return false;
-        }
-    }
+            std::lock_guard<std::mutex> socketLock(socketMutex);
 
-    if (responseCV.wait_for(lock, std::chrono::milliseconds(timeoutMs),
-                           [this] { return !waitingForResponse; }))
-    {
-        responseCode = lastStatusCode;
-        return true;
-    }
-
-    waitingForResponse = false;
-    responseCode = TcpStatusCode::SUCCESS;
-    return false;
-}
-
-void TCPClientConnection::OnResponseReceived(TcpStatusCode code)
-{
-    std::lock_guard<std::mutex> lock(responseMutex);
-    lastStatusCode = code;
-    waitingForResponse = false;
-    responseCV.notify_one();
-}
-
-void TCPClientConnection::StartReceive(std::function<void(const std::vector<char>&)> callback,
-                                       std::function<void(TcpStatusCode)> responseCallback)
-{
-    receiveThread = std::thread([this, callback, responseCallback]()
-    {
-        const int BUFFER_SIZE = 65536;
-        std::vector<char> buffer(BUFFER_SIZE);
-
-        while (connected)
-        {
-            int bytesReceived = recv(socket, buffer.data(), BUFFER_SIZE, 0);
-
-            if (bytesReceived > 0)
-            {
-                std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
-
-                if (bytesReceived >= 4 && receivedData[0] == 'S' && receivedData[1] == 'T' &&
-                    receivedData[2] == 'A' && receivedData[3] == 'T')
-                {
-                    if (bytesReceived >= 8)
-                    {
-                        int code = 0;
-                        for (int i = 4; i < 8 && i < bytesReceived; i++)
-                            code = code * 10 + (receivedData[i] - '0');
-
-                        responseCallback(static_cast<TcpStatusCode>(code));
-                    }
-                }
-                else
-                {
-                    if (callback)
-                        callback(receivedData);
-                }
-            }
-            else if (bytesReceived == 0)
+            if (socket == INVALID_SOCKET)
                 break;
-            else
-            {
-                int error = WSAGetLastError();
 
-                if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT)
-                    break;
-            }
+            int byteSend = send(socket, data.data(), static_cast<int>(data.size()), 0);
+
+            if (byteSend == SOCKET_ERROR)
+                break;
+
+            char buffer[4096] = {0};
+            int bytesReceived = recv(socket, buffer, sizeof(buffer) - 1, 0);
+
+            if (bytesReceived <= 0)
+                break;
+
+            buffer[bytesReceived] = '\0';
+
+            finalCode = Utils::ParseStatusCode(std::string(buffer));
         }
 
-        connected = false;
-    });
+        timeBetweenAttempts *= 2;
 
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeBetweenAttempts));
+    }
 }

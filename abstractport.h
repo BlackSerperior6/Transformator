@@ -15,7 +15,7 @@ public:
 
     virtual ~AbstractPort();
 
-    virtual bool Accept(const std::vector<char> & data) = 0;
+    virtual void Accept(const std::vector<char> & data) = 0;
 
     virtual bool Start() = 0;
 

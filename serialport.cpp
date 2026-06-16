@@ -2,7 +2,7 @@
 
 SerialPort::SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud, AbstractPort* target) :
     hComPort(INVALID_HANDLE_VALUE), portName(serialPortName), baudRate(baud),
-    AbstractPort(conId, type, target) {}
+    AbstractPort(conId, type, target), acceptThreadsPool(new ThreadPool(2))  {}
 
 SerialPort::~SerialPort()
 {
@@ -91,23 +91,16 @@ bool SerialPort::Start()
     return true;
 }
 
-bool SerialPort::Accept(const std::vector<char>& data)
+void SerialPort::Accept(const std::vector<char>& data)
 {
-    writeThreads.push_back((std::thread(&SerialPort::AcceptThread, this, data)));
-    return true;
+    acceptThreadsPool->AddTask(&SerialPort::AcceptThread, data);
 }
 
 void SerialPort::Stop()
 {
     isRunning = false;
 
-    for (auto& i : writeThreads)
-    {
-        if (i.joinable())
-            i.join();
-    }
-
-    writeThreads.clear();
+    delete acceptThreadsPool;
 
     CancelIoEx(hComPort, NULL);
 

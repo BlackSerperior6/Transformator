@@ -27,7 +27,7 @@ public:
 
     ~TcpPort();
 
-    bool Accept(const std::vector<char>& data);
+    void Accept(const std::vector<char>& data);
 
     bool Start();
 

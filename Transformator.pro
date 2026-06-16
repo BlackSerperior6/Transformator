@@ -18,7 +18,9 @@ SOURCES += \
     portsconnection.cpp \
     serialport.cpp \
     tcpclientconnection.cpp \
-    tcpport.cpp
+    tcpport.cpp \
+    threadpool.cpp \
+    utils.cpp
 
 HEADERS += \
     PortType.h \
@@ -29,7 +31,8 @@ HEADERS += \
     serialport.h \
     tcpclientconnection.h \
     tcpport.h \
-    tcpstatuscode.h
+    tcpstatuscode.h \
+    threadpool.h
 
 FORMS += \
     connectionedit.ui \

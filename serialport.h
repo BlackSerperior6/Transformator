@@ -2,6 +2,7 @@
 #define SERIALPORT_H
 
 #include "abstractport.h"
+#include "threadpool.h"
 #include <windows.h>
 #include "string"
 #include <thread>
@@ -17,7 +18,7 @@ public:
 
     ~SerialPort();
 
-    bool Accept(const std::vector<char> & data);
+    void Accept(const std::vector<char> & data);
 
     bool Start();
 
@@ -31,7 +32,7 @@ private:
     HANDLE hComPort;
     std::mutex mtx;
     std::thread readThread;
-    std::vector<std::thread> writeThreads;
+    ThreadPool* acceptThreadsPool;
     std::atomic<bool> isRunning;
     std::string portName;
     DWORD baudRate;

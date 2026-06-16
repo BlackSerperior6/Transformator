@@ -3,6 +3,7 @@
 
 enum class TcpStatusCode
 {
+    UNKNOWN = 000,
     SUCCESS = 200,
     FORBIDDEN = 403,
     TIMEOUT = 408

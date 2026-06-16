@@ -16,6 +16,7 @@
 #include <queue>
 #include <condition_variable>
 #include "tcpstatuscode.h"
+#include "utils.cpp"
 
 class TCPClientConnection
 {
@@ -27,24 +28,18 @@ public:
     SOCKET socket;
     std::string ipAddress;
     int port;
+    int comAttempts;
     std::atomic<bool> connected;
-    std::thread receiveThread;
-    std::mutex sendMutex;
-    std::mutex responseMutex;
-    std::condition_variable responseCV;
-    std::atomic<TcpStatusCode> lastStatusCode;
-    bool waitingForResponse;
+    std::mutex socketMutex;
 
     bool Connect(const std::string& ip, int portNum, int timeout);
 
     void Disconnect();
 
-    bool SendData(const std::vector<char>& data, TcpStatusCode& responseCode, int timeoutMs);
+    void SendData(const std::vector<char>& data, int timeoutMs);
 
     void StartReceive(std::function<void(const std::vector<char>&)> callback,
                       std::function<void(TcpStatusCode)> responseCallback);
-
-    void OnResponseReceived(TcpStatusCode code);
 
     void SetErrorCallback(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)>);
 };

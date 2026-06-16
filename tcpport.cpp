@@ -48,20 +48,13 @@ void TcpPort::Stop()
         StopServer();
 }
 
-bool TcpPort::Accept(const std::vector<char> &data)
+void TcpPort::Accept(const std::vector<char> &data)
 {
     if (!isRunning || targetPort != nullptr)
-        return false;
-
-    bool allSuccess = true;
+        return;
 
     for (size_t i = 0; i < connectionsToServers.size(); i++)
-    {
-        if (!SendData(i, data))
-            allSuccess = false;
-    }
-
-    return allSuccess;
+        SendData(i, data);
 }
 
 bool TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
