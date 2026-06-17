@@ -194,7 +194,7 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
                 targetPort->Accept(receivedData);
         }
 
-        std::string statusResponse = "STAT" + std::to_string(static_cast<int>(statusCode));
+        std::string statusResponse = "Status:" + std::to_string(static_cast<int>(statusCode));
         int bytesSend = send(clientSocket, statusResponse.c_str(), static_cast<int>(statusResponse.size()), 0);
 
         if (bytesSend <= 0)
