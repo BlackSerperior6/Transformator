@@ -2,6 +2,7 @@
 #define TCPPORT_H
 
 #include "abstractport.h"
+#include "threadpool.h"
 #include "tcpclientconnection.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -57,7 +58,7 @@ private:
     // Server side (we listen, have target port)
     SOCKET listenSocket;
     std::thread listenThread;
-    std::vector<std::thread> clientThreads;
+    ThreadPool* clientThreads;
     std::mutex clientsMutex;
     std::map<SOCKET, sockaddr_in> connectionsToClients;
 
@@ -69,7 +70,7 @@ private:
 
     void CallErrorCallback(int errorCode, const std::string& errorMessage);
 
-    bool SendData(size_t targetIndex, const std::vector<char>& data);
+    void SendData(size_t targetIndex, const std::vector<char>& data);
 
     bool StartServer();
 

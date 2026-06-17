@@ -1,88 +1,106 @@
 #include "tcpclientconnection.h"
 
-TCPClientConnection::TCPClientConnection() : socket(INVALID_SOCKET), connected(false) {}
+TCPClientConnection::TCPClientConnection(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback,
+                                         int conId)
+    : isRunning(false), errorCallback(callback), connectionId(conId), pool(new ThreadPool(4))
+{}
 
 TCPClientConnection::~TCPClientConnection()
 {
     Disconnect();
 }
 
-bool TCPClientConnection::Connect(const std::string &ip, int portNum, int timeout)
+void TCPClientConnection::Connect(const std::string &ip, int portNum, int timeout)
 {
     ipAddress = ip;
     port = portNum;
+    timeoutMs = timeout;
 
-    socket = ::socket(AF_INET, SOCK_STREAM, 0);
-
-    if (socket == INVALID_SOCKET)
-        return false;
-
-    setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-    setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
-
-    sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(portNum);
-
-    if (inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr) <= 0)
-    {
-        closesocket(socket);
-        return false;
-    }
-
-    if (::connect(socket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        closesocket(socket);
-        return false;
-    }
-
-    connected = true;
-    return true;
+    isRunning = true;
 }
 
 void TCPClientConnection::Disconnect()
 {
-    connected = false;
+    isRunning = false;
 
-    if (socket != INVALID_SOCKET)
-    {
-        closesocket(socket);
-        socket = INVALID_SOCKET;
-    }
+    delete pool;
 }
 
-void TCPClientConnection::SendData(const std::vector<char>& data, int timeBetweenAttempts)
+void TCPClientConnection::SendData(const std::vector<char> &data)
 {
-    if (!connected || socket == INVALID_SOCKET)
+    pool->AddTask(&TCPClientConnection::SendDataWithRetries, data, timeoutMs);
+}
+
+void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int timeoutMs)
+{
+    if (!isRunning)
         return;
 
-    TcpStatusCode finalCode = TcpStatusCode::UNKNOWN;
+    TcpStatusCode finalCode = TcpStatusCode::TIMEOUT;
 
     for (int i = 0; i <= comAttempts; i++)
     {
+        SOCKET socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+        setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeoutMs, sizeof(timeoutMs));
+        setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeoutMs, sizeof(timeoutMs));
+
+        sockaddr_in serverAddr;
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_port = htons(port);
+
+        if (inet_pton(AF_INET, ipAddress.c_str(), &serverAddr.sin_addr) <= 0)
         {
-            std::lock_guard<std::mutex> socketLock(socketMutex);
-
-            if (socket == INVALID_SOCKET)
-                break;
-
-            int byteSend = send(socket, data.data(), static_cast<int>(data.size()), 0);
-
-            if (byteSend == SOCKET_ERROR)
-                break;
-
-            char buffer[4096] = {0};
-            int bytesReceived = recv(socket, buffer, sizeof(buffer) - 1, 0);
-
-            if (bytesReceived <= 0)
-                break;
-
-            buffer[bytesReceived] = '\0';
-
-            finalCode = Utils::ParseStatusCode(std::string(buffer));
+            finalCode = TcpStatusCode::INVALID_IP_ERROR;
+            closesocket(socket);
+            break;
         }
 
-        timeBetweenAttempts *= 2;
+        if (::connect(socket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+        {
+            finalCode = TcpStatusCode::CONNECTION_ERROR;
+            closesocket(socket);
+            break;
+        }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(timeBetweenAttempts));
+        int byteSend = send(socket, data.data(), static_cast<int>(data.size()), 0);
+
+        if (byteSend == SOCKET_ERROR)
+        {
+            finalCode = TcpStatusCode::SEND_ERROR;
+            closesocket(socket);
+            continue;
+        }
+
+        char buffer[4096] = {0};
+        int bytesReceived = recv(socket, buffer, sizeof(buffer) - 1, 0);
+
+        if (bytesReceived <= 0)
+        {
+            finalCode = TcpStatusCode::RECEIVE_ERROR;
+            closesocket(socket);
+            continue;
+        }
+
+        buffer[bytesReceived] = '\0';
+
+        finalCode = Utils::ParseStatusCode(std::string(buffer));
+
+        closesocket(socket);
+
+        if (finalCode != TcpStatusCode::SUCCESS)
+        {
+            timeoutMs *= 2;
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(timeoutMs));
+        }
+        else
+            break;
+    }
+
+    if (finalCode != TcpStatusCode::SUCCESS)
+    {
+        if (errorCallback)
+            errorCallback(connectionId, (int) finalCode, "An error has occured during TCP data transfer. Check the error code.");
     }
 }

@@ -6,7 +6,12 @@ enum class TcpStatusCode
     UNKNOWN = 000,
     SUCCESS = 200,
     FORBIDDEN = 403,
-    TIMEOUT = 408
+    TIMEOUT = 408,
+    SOCKET_ERROR = 1000,
+    CONNECTION_ERROR = 1001,
+    SEND_ERROR = 1002,
+    RECEIVE_ERROR = 1003,
+    INVALID_IP_ERROR = 1004
 };
 
 #endif // TCPSTATUSCODE_H

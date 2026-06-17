@@ -2,7 +2,7 @@
 
 TcpPort::TcpPort(int listenPortNum, int conId, PortType type, AbstractPort* target,
                  const std::set<std::string>& targetIPsList) :  AbstractPort(conId, type, target), targetNetworkPort(listenPortNum),
-    listenSocket(INVALID_SOCKET)
+                 listenSocket(INVALID_SOCKET), clientThreads(new ThreadPool(4))
 {
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -57,55 +57,17 @@ void TcpPort::Accept(const std::vector<char> &data)
         SendData(i, data);
 }
 
-bool TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
+void TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
 {
     if (targetIndex >= connectionsToServers.size())
     {
         if (errorCallback)
             errorCallback(connectionId, 400, "Invalid target index: " + std::to_string(targetIndex));
 
-        return false;
+        return;
     }
 
-    TcpStatusCode responseCode;
-
-    for (int attempt = 1; attempt <= maxRetryCount; attempt++)
-    {
-        if (connectionsToServers[targetIndex]->SendData(data, responseCode, 5000))
-        {
-            if (responseCode == TcpStatusCode::SUCCESS)
-                return true;
-            else
-            {
-                if (errorCallback)
-                {
-                    std::string errorMsg = "Failed to send to " + connectionsToServers[targetIndex]->ipAddress +
-                                          " (attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetryCount) +
-                                          "): Status code " + std::to_string(static_cast<int>(responseCode));
-
-                    errorCallback(connectionId, static_cast<int>(responseCode), errorMsg);
-                }
-
-                if (attempt < maxRetryCount)
-                    std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
-            }
-        }
-        else
-        {
-            if (errorCallback)
-            {
-                std::string errorMsg = "Send timeout/failed to " + connectionsToServers[targetIndex]->ipAddress +
-                                      " (attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetryCount) + ")";
-
-                errorCallback(connectionId, static_cast<int>(TcpStatusCode::TIMEOUT), errorMsg);
-            }
-
-            if (attempt < maxRetryCount)
-                std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
-        }
-    }
-
-    return false;
+    connectionsToServers[targetIndex]->SendData(data);
 }
 
 void TcpPort::CallErrorCallback(int errorCode, const std::string& errorMessage)
@@ -116,7 +78,7 @@ void TcpPort::CallErrorCallback(int errorCode, const std::string& errorMessage)
 
 bool TcpPort::StartServer()
 {
-    listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+    listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (listenSocket == INVALID_SOCKET)
     {
@@ -161,6 +123,8 @@ void TcpPort::StopServer()
         listenSocket = INVALID_SOCKET;
     }
 
+    delete  clientThreads;
+
     {
         std::lock_guard<std::mutex> lock(clientsMutex);
 
@@ -172,14 +136,6 @@ void TcpPort::StopServer()
 
     if (listenThread.joinable())
         listenThread.join();
-
-    for (auto& thread : clientThreads)
-    {
-        if (thread.joinable())
-            thread.join();
-    }
-
-    clientThreads.clear();
 }
 
 void TcpPort::ServerAcceptLoop()
@@ -207,7 +163,7 @@ void TcpPort::ServerAcceptLoop()
             connectionsToClients[clientSocket] = clientAddr;
         }
 
-        clientThreads.emplace_back(&TcpPort::ServerHandleClient, this, clientSocket, std::string(clientIP));
+        clientThreads->AddTask(&TcpPort::ServerHandleClient, clientSocket, std::string(clientIP));
     }
 }
 
@@ -216,53 +172,45 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
     const int BUFFER_SIZE = 65536;
     std::vector<char> buffer(BUFFER_SIZE);
 
-    while (isRunning)
+    int bytesReceived = recv(clientSocket, buffer.data(), BUFFER_SIZE, 0);
+
+    if (bytesReceived > 0)
     {
-        int bytesReceived = recv(clientSocket, buffer.data(), BUFFER_SIZE, 0);
+        TcpStatusCode statusCode;
 
-        if (bytesReceived > 0)
+        if (!targetIPs.empty() && targetIPs.find(clientIP) == targetIPs.end())
         {
-            TcpStatusCode statusCode;
-
-            if (!targetIPs.empty() && targetIPs.find(clientIP) == targetIPs.end())
-            {
-                std::string errorMsg = "Rejected connection from unauthorized IP: " + std::string(clientIP);
-                statusCode = TcpStatusCode::FORBIDDEN;
-                CallErrorCallback(403, errorMsg);
-            }
-            else
-            {
-                std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
-
-                {
-                    std::lock_guard<std::mutex> lock(dataMutex);
-
-                    receiveQueue.push(receivedData);
-
-                    dataCV.notify_one();
-
-                    statusCode = TcpStatusCode::SUCCESS;
-
-                    if (targetPort != nullptr)
-                        targetPort->Accept(receivedData);
-                }
-            }
-
-            std::string statusResponse = "STAT" + std::to_string(static_cast<int>(statusCode));
-            send(clientSocket, statusResponse.c_str(), static_cast<int>(statusResponse.size()), 0);
+            std::string errorMsg = "Rejected connection from unauthorized IP: " + std::string(clientIP);
+            statusCode = TcpStatusCode::FORBIDDEN;
+            CallErrorCallback(403, errorMsg);
         }
-        else if (bytesReceived == 0)
-            break;
         else
         {
-            int error = WSAGetLastError();
+            std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
 
-            if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT && error != WSAECONNABORTED)
-            {
-                CallErrorCallback(error, "Receive error from client " + clientIP);
-                break;
-            }
+            statusCode = TcpStatusCode::SUCCESS;
+
+            if (targetPort != nullptr)
+                targetPort->Accept(receivedData);
         }
+
+        std::string statusResponse = "STAT" + std::to_string(static_cast<int>(statusCode));
+        int bytesSend = send(clientSocket, statusResponse.c_str(), static_cast<int>(statusResponse.size()), 0);
+
+        if (bytesSend <= 0)
+        {
+            CallErrorCallback(400, "Failed to send a response to client with IP: " + clientIP);
+            return;
+        }
+    }
+    else if (bytesReceived == 0)
+        return;
+    else
+    {
+        int error = WSAGetLastError();
+
+        if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT && error != WSAECONNABORTED)
+            CallErrorCallback(error, "Receive error from client " + clientIP);
     }
 
     {
@@ -279,40 +227,12 @@ bool TcpPort::StartClient()
     {
         auto connection = std::make_unique<TCPClientConnection>();
 
-        if (connection->Connect(ip, targetNetworkPort, 5000))
-        {
-            connection->StartReceive(
-                [this](const std::vector<char>& data)
-            {
-                    {
-                        std::lock_guard<std::mutex> lock(dataMutex);
-                        receiveQueue.push(data);
-                        dataCV.notify_one();
-                    }
+        connection->Connect(ip, targetNetworkPort, 5000);
 
-                    if (receiveCallback)
-                        receiveCallback(data);
-                },
-                [this](TcpStatusCode code)
-            {
-                    if (code != TcpStatusCode::SUCCESS)
-                    {
-                        std::string errorMsg = "Received error status code: " + std::to_string(static_cast<int>(code));
-                        CallErrorCallback(static_cast<int>(code), errorMsg);
-                    }
-                }
-            );
-
-            connectionsToServers.push_back(std::move(connection));
-        }
-        else
-        {
-            std::string errorMsg = "Failed to connect to target: " + ip + ":" + std::to_string(targetNetworkPort);
-            CallErrorCallback(1001, errorMsg);
-        }
+        connectionsToServers.push_back(std::move(connection));
     }
 
-    return !connectionsToServers.empty();
+    return true;
 }
 
 void TcpPort::StopClient()

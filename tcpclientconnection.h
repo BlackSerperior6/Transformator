@@ -17,26 +17,35 @@
 #include <condition_variable>
 #include "tcpstatuscode.h"
 #include "utils.cpp"
+#include "threadpool.h"
 
 class TCPClientConnection
 {
 public:
-    TCPClientConnection();
+    TCPClientConnection(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback,
+                        int conId);
 
     ~TCPClientConnection();
 
-    SOCKET socket;
     std::string ipAddress;
     int port;
+    int timeoutMs;
     int comAttempts;
-    std::atomic<bool> connected;
-    std::mutex socketMutex;
+    std::atomic<bool> isRunning;
 
-    bool Connect(const std::string& ip, int portNum, int timeout);
+    ThreadPool* pool;
+
+    int connectionId;
+
+    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
+
+    void Connect(const std::string& ip, int portNum, int timeout);
 
     void Disconnect();
 
-    void SendData(const std::vector<char>& data, int timeoutMs);
+    void SendData(const std::vector<char>& data);
+
+    void SendDataWithRetries(const std::vector<char>& data, int timeoutMs);
 
     void StartReceive(std::function<void(const std::vector<char>&)> callback,
                       std::function<void(TcpStatusCode)> responseCallback);
