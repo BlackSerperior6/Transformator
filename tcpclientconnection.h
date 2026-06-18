@@ -26,12 +26,6 @@ public:
 
     ~TCPClientConnection();
 
-    std::string ipAddress;
-    int port;
-    int timeoutMs;
-    int comAttempts;
-    std::atomic<bool> isRunning;
-
     ThreadPool* pool;
 
     int connectionId;
@@ -44,12 +38,14 @@ public:
 
     void SendData(const std::vector<char>& data);
 
+private:
+    std::string ipAddress;
+    int port;
+    int timeoutMs;
+    int comAttempts;
+    std::atomic<bool> isRunning;
+
     void SendDataWithRetries(const std::vector<char>& data, int timeoutMs);
-
-    void StartReceive(std::function<void(const std::vector<char>&)> callback,
-                      std::function<void(TcpStatusCode)> responseCallback);
-
-    void SetErrorCallback(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)>);
 };
 
 #endif // TCPCLIENTCONNECTION_H
