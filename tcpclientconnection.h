@@ -26,12 +26,6 @@ public:
 
     ~TCPClientConnection();
 
-    ThreadPool* pool;
-
-    int connectionId;
-
-    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
-
     void Connect(const std::string& ip, int portNum, int timeout);
 
     void Disconnect();
@@ -44,6 +38,12 @@ private:
     int timeoutMs;
     int comAttempts;
     std::atomic<bool> isRunning;
+
+    ThreadPool* pool;
+
+    int connectionId;
+
+    std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback;
 
     void SendDataWithRetries(const std::vector<char>& data, int timeoutMs);
 };

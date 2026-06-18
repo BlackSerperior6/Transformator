@@ -179,7 +179,7 @@ void ConnectionEdit::on_SaveConnectionButton_clicked()
 {
     if (portsConnection != nullptr)
     {
-        delete  portsConnection;
+        delete portsConnection;
     }
     else
     {

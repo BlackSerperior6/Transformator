@@ -119,21 +119,12 @@ bool TcpPort::StartServer()
 
 void TcpPort::StopServer()
 {
+    delete clientThreads;
+
     if (listenSocket != INVALID_SOCKET)
     {
         closesocket(listenSocket);
         listenSocket = INVALID_SOCKET;
-    }
-
-    delete  clientThreads;
-
-    {
-        std::lock_guard<std::mutex> lock(clientsMutex);
-
-        for (auto& pair : connectionsToClients)
-            closesocket(pair.first);
-
-        connectionsToClients.clear();
     }
 
     if (listenThread.joinable())
@@ -160,17 +151,15 @@ void TcpPort::ServerAcceptLoop()
         char clientIP[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
 
-        {
-            std::lock_guard<std::mutex> lock(clientsMutex);
-            connectionsToClients[clientSocket] = clientAddr;
-        }
-
         clientThreads->AddTask([this, clientSocket, clientIP]{this->ServerHandleClient(clientSocket, std::string(clientIP));});
     }
 }
 
 void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 {
+    if (!isRunning)
+        return;
+
     const int BUFFER_SIZE = 65536;
     std::vector<char> buffer(BUFFER_SIZE);
 
@@ -209,11 +198,6 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 
         if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT && error != WSAECONNABORTED)
             CallErrorCallback(error, "Receive error from client " + clientIP);
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(clientsMutex);
-        connectionsToClients.erase(clientSocket);
     }
 
     closesocket(clientSocket);
