@@ -38,6 +38,9 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
 
     TcpStatusCode finalCode = TcpStatusCode::TIMEOUT;
 
+    const int BUFFER_SIZE = 65536;
+    std::vector<char> buffer(BUFFER_SIZE);
+
     for (int i = 0; i <= comAttempts; i++)
     {
         SOCKET socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -72,8 +75,7 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
             continue;
         }
 
-        char buffer[4096] = {0};
-        int bytesReceived = recv(socket, buffer, sizeof(buffer) - 1, 0);
+        int bytesReceived = recv(socket, buffer.data(), BUFFER_SIZE, 0);
 
         if (bytesReceived <= 0)
         {
@@ -81,10 +83,22 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
             closesocket(socket);
             continue;
         }
+        else
+        {
+            std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
 
-        buffer[bytesReceived] = '\0';
+            if (bytesReceived >= 4 && receivedData[0] == 'S' && receivedData[1] == 'T' &&
+                    receivedData[2] == 'A' && receivedData[3] == 'T')
+            {
+                if (bytesReceived >= 8)
+                {
+                    int code = 0;
 
-        finalCode = Utils::ParseStatusCode(std::string(buffer));
+                    for (int i = 4; i < 8 && i < bytesReceived; i++)
+                        code = code * 10 + (receivedData[i] - '0');
+                }
+            }
+        }
 
         closesocket(socket);
 

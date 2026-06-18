@@ -14,9 +14,7 @@ public:
             try {
                 size_t startPos = statusPos + 7;
                 while (startPos < response.length() && isspace(response[startPos]))
-                {
                     startPos++;
-                }
 
                 int code = std::stoi(response.substr(startPos));
                 return static_cast<TcpStatusCode>(code);
