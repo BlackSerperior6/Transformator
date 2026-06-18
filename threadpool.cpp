@@ -9,6 +9,7 @@ ThreadPool::ThreadPool(size_t numThreads) : stop(false)
             while (true)
             {
                 std::function<void()> task;
+
                 {
                     std::unique_lock<std::mutex> lock(queueMutex);
 
@@ -44,18 +45,4 @@ ThreadPool::~ThreadPool()
         if (worker.joinable())
             worker.join();
     }
-}
-
-template<typename F, typename... Args>
-void ThreadPool::AddTask(F&& f, Args&&... args)
-{
-    {
-        std::lock_guard<std::mutex> lock(queueMutex);
-        tasks.emplace([=]()
-        {
-            std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-        });
-    }
-
-    cv.notify_one();
 }

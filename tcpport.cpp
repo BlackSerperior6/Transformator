@@ -2,7 +2,7 @@
 
 TcpPort::TcpPort(int listenPortNum, int conId, PortType type, AbstractPort* target,
                  const std::set<std::string>& targetIPsList) :  AbstractPort(conId, type, target), targetNetworkPort(listenPortNum),
-                 listenSocket(INVALID_SOCKET), clientThreads(new ThreadPool(4))
+                 listenSocket(INVALID_SOCKET)
 {
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -78,6 +78,8 @@ void TcpPort::CallErrorCallback(int errorCode, const std::string& errorMessage)
 
 bool TcpPort::StartServer()
 {
+    clientThreads = new ThreadPool(4);
+
     listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (listenSocket == INVALID_SOCKET)
@@ -163,7 +165,7 @@ void TcpPort::ServerAcceptLoop()
             connectionsToClients[clientSocket] = clientAddr;
         }
 
-        clientThreads->AddTask(&TcpPort::ServerHandleClient, clientSocket, std::string(clientIP));
+        clientThreads->AddTask([this, clientSocket, clientIP]{this->ServerHandleClient(clientSocket, std::string(clientIP));});
     }
 }
 
@@ -179,11 +181,7 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
         TcpStatusCode statusCode;
 
         if (!targetIPs.empty() && targetIPs.find(clientIP) == targetIPs.end())
-        {
-            std::string errorMsg = "Rejected connection from unauthorized IP: " + std::string(clientIP);
             statusCode = TcpStatusCode::FORBIDDEN;
-            CallErrorCallback(403, errorMsg);
-        }
         else
         {
             std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
@@ -223,9 +221,11 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 
 bool TcpPort::StartClient()
 {
+    sharedClientsThreadPool = new ThreadPool(4);
+
     for (const auto& ip : targetIPs)
     {
-        auto connection = std::make_unique<TCPClientConnection>();
+        auto connection = std::make_unique<TCPClientConnection>(errorCallback, connectionId, sharedClientsThreadPool);
 
         connection->Connect(ip, targetNetworkPort, 5000);
 
@@ -239,6 +239,8 @@ void TcpPort::StopClient()
 {
     for (auto& connection : connectionsToServers)
         connection->Disconnect();
+
+    delete sharedClientsThreadPool;
 
     connectionsToServers.clear();
 }

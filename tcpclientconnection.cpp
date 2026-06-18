@@ -1,8 +1,8 @@
 #include "tcpclientconnection.h"
 
 TCPClientConnection::TCPClientConnection(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback,
-                                         int conId)
-    : isRunning(false), errorCallback(callback), connectionId(conId), pool(new ThreadPool(4))
+                                         int conId, ThreadPool* providedThreadPool)
+    : isRunning(false), errorCallback(callback), connectionId(conId), pool(providedThreadPool)
 {}
 
 TCPClientConnection::~TCPClientConnection()
@@ -22,13 +22,11 @@ void TCPClientConnection::Connect(const std::string &ip, int portNum, int timeou
 void TCPClientConnection::Disconnect()
 {
     isRunning = false;
-
-    delete pool;
 }
 
 void TCPClientConnection::SendData(const std::vector<char> &data)
 {
-    pool->AddTask(&TCPClientConnection::SendDataWithRetries, data, timeoutMs);
+    pool->AddTask([this, data]{this->SendDataWithRetries(data, this->timeoutMs);});
 }
 
 void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int timeoutMs)

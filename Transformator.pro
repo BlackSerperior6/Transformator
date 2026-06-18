@@ -19,8 +19,7 @@ SOURCES += \
     serialport.cpp \
     tcpclientconnection.cpp \
     tcpport.cpp \
-    threadpool.cpp \
-    utils.cpp
+    threadpool.cpp
 
 HEADERS += \
     PortType.h \

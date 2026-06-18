@@ -93,7 +93,7 @@ bool SerialPort::Start()
 
 void SerialPort::Accept(const std::vector<char>& data)
 {
-    acceptThreadsPool->AddTask(&SerialPort::AcceptThread, data);
+    acceptThreadsPool->AddTask([this, data]{this->AcceptThread(data);});
 }
 
 void SerialPort::Stop()

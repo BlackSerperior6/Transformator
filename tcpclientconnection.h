@@ -16,14 +16,13 @@
 #include <queue>
 #include <condition_variable>
 #include "tcpstatuscode.h"
-#include "utils.cpp"
 #include "threadpool.h"
 
 class TCPClientConnection
 {
 public:
     TCPClientConnection(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> errorCallback,
-                        int conId);
+                        int conId, ThreadPool* providedThreadPool);
 
     ~TCPClientConnection();
 

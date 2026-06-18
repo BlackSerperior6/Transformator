@@ -15,8 +15,16 @@ public:
 
     ~ThreadPool();
 
-    template<typename F, typename... Args>
-    void AddTask(F&& f, Args&&... args);
+    template<typename F>
+    void AddTask(F&& task)
+    {
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            tasks.emplace(std::forward<F>(task));
+        }
+
+        cv.notify_one();
+    }
 
 private:
     std::vector<std::thread> workers;
