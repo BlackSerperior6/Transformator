@@ -2,6 +2,7 @@
 #define PORTSCONNECTION_H
 
 #include "abstractport.h"
+#include <vector>
 #include <QWidget>
 
 class PortsConnection : public QWidget
@@ -12,8 +13,13 @@ public:
 
     ~PortsConnection();
 
+    std::vector<std::string> StoredData;
+
     AbstractPort* firstPort;
     AbstractPort* secondPort;
+
+private:
+
 
 signals:
 };

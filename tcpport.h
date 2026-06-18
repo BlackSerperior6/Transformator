@@ -24,15 +24,15 @@ class TcpPort : public AbstractPort
 {
 public:
     TcpPort(int targetPortNum, int conId, PortType type, AbstractPort* target = nullptr,
-            const std::set<std::string>& targetIPsList = {});
+            void* parentConnection = nullptr, const std::set<std::string>& targetIPsList = {});
 
     ~TcpPort();
 
-    void Accept(const std::vector<char>& data);
+    void Accept(const std::vector<char>& data) override;
 
-    bool Start();
+    bool Start() override;
 
-    void Stop();
+    void Stop() override;
 
     int GetTargetNetworkPort();
 
@@ -44,9 +44,6 @@ public:
 
 private:
     std::atomic<bool> isRunning;
-    std::mutex dataMutex;
-    std::condition_variable dataCV;
-    std::queue<std::vector<char>> receiveQueue;
 
     // For client mode - repesents IPs to forward data to, for server mode - repsenets IPs from which we accept data
     std::set<std::string> targetIPs;
@@ -59,7 +56,8 @@ private:
     SOCKET listenSocket;
     std::thread listenThread;
     ThreadPool* clientThreads;
-    std::mutex clientsMutex;
+    std::map<SOCKET, sockaddr_in> clientSockets;
+    std::mutex clientsSocketMutex;
 
     //Client side (we send, no target port)
     std::vector<std::unique_ptr<TCPClientConnection>> connectionsToServers;

@@ -11,11 +11,11 @@
 class AbstractPort
 {
 public:
-    AbstractPort(int conId, PortType type, AbstractPort* target = nullptr);
+    AbstractPort(int conId, PortType type, void* parentConnection, AbstractPort* target = nullptr);
 
     virtual ~AbstractPort();
 
-    virtual void Accept(const std::vector<char> & data) = 0;
+    virtual void Accept(const std::vector<char> & data);
 
     virtual bool Start() = 0;
 
@@ -27,6 +27,8 @@ public:
 
 protected:
     AbstractPort* targetPort;
+
+    void* ParentConnection;
 
     int connectionId;
 

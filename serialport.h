@@ -14,15 +14,15 @@
 class SerialPort : public AbstractPort
 {
 public:
-    SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud = CBR_9600, AbstractPort* target = nullptr);
+    SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud = CBR_9600, void* parentConnection = nullptr, AbstractPort* target = nullptr);
 
     ~SerialPort();
 
-    void Accept(const std::vector<char> & data);
+    void Accept(const std::vector<char> & data) override;
 
-    bool Start();
+    bool Start() override;
 
-    void Stop();
+    void Stop() override;
 
     void SetCallbackFunction(std::function<void(const std::vector<char>&)> callback);
 

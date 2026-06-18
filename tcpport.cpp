@@ -1,7 +1,8 @@
 #include "tcpport.h"
 
 TcpPort::TcpPort(int listenPortNum, int conId, PortType type, AbstractPort* target,
-                 const std::set<std::string>& targetIPsList) :  AbstractPort(conId, type, target), targetNetworkPort(listenPortNum),
+                 void* parentConnection, const std::set<std::string>& targetIPsList) :  AbstractPort(conId, type, parentConnection, target),
+                 targetNetworkPort(listenPortNum),
                  listenSocket(INVALID_SOCKET)
 {
     WSADATA wsaData;
@@ -52,6 +53,8 @@ void TcpPort::Accept(const std::vector<char> &data)
 {
     if (!isRunning || targetPort != nullptr)
         return;
+
+    AbstractPort::Accept(data);
 
     for (size_t i = 0; i < connectionsToServers.size(); i++)
         SendData(i, data);
@@ -119,6 +122,11 @@ bool TcpPort::StartServer()
 
 void TcpPort::StopServer()
 {
+    for (auto i : clientSockets)
+        closesocket(i.first);
+
+    clientSockets.clear();
+
     delete clientThreads;
 
     if (listenSocket != INVALID_SOCKET)
@@ -139,6 +147,12 @@ void TcpPort::ServerAcceptLoop()
         int clientAddrLen = sizeof(clientAddr);
 
         SOCKET clientSocket = accept(listenSocket, (sockaddr*)&clientAddr, &clientAddrLen);
+
+        {
+            std::lock_guard<std::mutex> lock(clientsSocketMutex);
+            clientSockets[clientSocket] = clientAddr;
+        }
+
 
         if (clientSocket == INVALID_SOCKET)
         {
@@ -198,6 +212,11 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 
         if (error != WSAEWOULDBLOCK && error != WSAETIMEDOUT && error != WSAECONNABORTED)
             CallErrorCallback(error, "Receive error from client " + clientIP);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(clientsSocketMutex);
+        clientSockets.erase(clientSocket);
     }
 
     closesocket(clientSocket);

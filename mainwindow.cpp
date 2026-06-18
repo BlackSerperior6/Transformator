@@ -67,6 +67,19 @@ void MainWindow::on_DeleteConnection_clicked()
 void MainWindow::on_ConnectionsList_currentRowChanged(int currentRow)
 {
     currentConnectionIndex = currentRow;
+
+    ui->DataView->clear();
+
+    if (currentConnectionIndex < 0)
+        return;
+
+    PortsConnection *connection =  (PortsConnection*) ui->ConnectionsList->itemWidget(ui->ConnectionsList->item(currentConnectionIndex));
+
+    if (connection->StoredData.empty())
+        return;
+
+    for (auto &i : connection->StoredData)
+        ui->DataView->addItem(QString::fromStdString(i));
 }
 
 void MainWindow::on_ConnectionsList_itemDoubleClicked(QListWidgetItem *item)

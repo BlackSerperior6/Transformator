@@ -1,8 +1,8 @@
 #include "serialport.h"
 
-SerialPort::SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud, AbstractPort* target) :
+SerialPort::SerialPort(std::string serialPortName, int conId, PortType type, DWORD baud, void* parentConnection, AbstractPort* target) :
     hComPort(INVALID_HANDLE_VALUE), portName(serialPortName), baudRate(baud),
-    AbstractPort(conId, type, target), acceptThreadsPool(new ThreadPool(2))  {}
+    AbstractPort(conId, type, parentConnection, target), acceptThreadsPool(new ThreadPool(2))  {}
 
 SerialPort::~SerialPort()
 {
@@ -93,6 +93,7 @@ bool SerialPort::Start()
 
 void SerialPort::Accept(const std::vector<char>& data)
 {
+    AbstractPort::Accept(data);
     acceptThreadsPool->AddTask([this, data]{this->AcceptThread(data);});
 }
 
