@@ -73,13 +73,7 @@ void MainWindow::on_ConnectionsList_currentRowChanged(int currentRow)
     if (currentConnectionIndex < 0)
         return;
 
-    PortsConnection *connection =  (PortsConnection*) ui->ConnectionsList->itemWidget(ui->ConnectionsList->item(currentConnectionIndex));
-
-    if (connection->StoredData.empty())
-        return;
-
-    for (auto &i : connection->StoredData)
-        ui->DataView->addItem(QString::fromStdString(i));
+    UpdateDataView();
 }
 
 void MainWindow::on_ConnectionsList_itemDoubleClicked(QListWidgetItem *item)
@@ -105,4 +99,25 @@ void MainWindow::on_ClearErrorLogsButton_clicked()
 {
     std::lock_guard<std::mutex> lock(mtx);
     ui->ErrorsLogs->clear();
+}
+
+void MainWindow::on_UpdateCurrentDataView_clicked()
+{
+    if (currentConnectionIndex < 0)
+        return;
+
+    ui->DataView->clear();
+
+    UpdateDataView();
+}
+
+void MainWindow::UpdateDataView()
+{
+    PortsConnection *connection =  (PortsConnection*) ui->ConnectionsList->itemWidget(ui->ConnectionsList->item(currentConnectionIndex));
+
+    if (connection->StoredData.empty())
+        return;
+
+    for (auto &i : connection->StoredData)
+        ui->DataView->addItem(QString::fromStdString(i));
 }

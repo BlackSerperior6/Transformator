@@ -9,17 +9,16 @@ class PortsConnection : public QWidget
 {
     Q_OBJECT
 public:
-    PortsConnection(AbstractPort* portOne,  AbstractPort* portTwo);
+    PortsConnection();
 
     ~PortsConnection();
+
+    void SetPorts(AbstractPort* portOne,  AbstractPort* portTwo);
 
     std::vector<std::string> StoredData;
 
     AbstractPort* firstPort;
     AbstractPort* secondPort;
-
-private:
-
 
 signals:
 };

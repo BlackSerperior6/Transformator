@@ -35,11 +35,15 @@ private slots:
 
     void on_ClearErrorLogsButton_clicked();
 
+    void on_UpdateCurrentDataView_clicked();
+
 private:
     Ui::MainWindow *ui;
 
     int connectionCounter;
 
     int currentConnectionIndex;
+
+    void UpdateDataView();
 };
 #endif // MAINWINDOW_H

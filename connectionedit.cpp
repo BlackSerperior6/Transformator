@@ -200,7 +200,7 @@ PortsConnection* ConnectionEdit::CreateConnection()
 {
     AbstractPort* firstPort;
     AbstractPort* secondport;
-    PortsConnection* connection;
+    PortsConnection* connection = new PortsConnection();
 
     switch (ui->ConTypeSelectionSecond->currentIndex())
     {
@@ -225,7 +225,7 @@ PortsConnection* ConnectionEdit::CreateConnection()
             break;
     }
 
-    connection = new PortsConnection(firstPort, secondport);
+    connection->SetPorts(firstPort, secondport);
     return connection;
 }
 
