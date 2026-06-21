@@ -153,7 +153,6 @@ void TcpPort::ServerAcceptLoop()
             clientSockets[clientSocket] = clientAddr;
         }
 
-
         if (clientSocket == INVALID_SOCKET)
         {
             if (isRunning)
@@ -191,8 +190,12 @@ void TcpPort::ServerHandleClient(SOCKET clientSocket, std::string clientIP)
 
             statusCode = TcpStatusCode::SUCCESS;
 
-            if (targetPort != nullptr)
-                targetPort->Accept(receivedData);
+            {
+                std::lock_guard<std::mutex> lock(targetPortMutex);
+
+                if (targetPort != nullptr)
+                    targetPort->Accept(receivedData);
+            }
         }
 
         std::string statusResponse = "STAT" + std::to_string(static_cast<int>(statusCode));

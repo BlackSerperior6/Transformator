@@ -58,6 +58,7 @@ private:
     ThreadPool* clientThreads;
     std::map<SOCKET, sockaddr_in> clientSockets;
     std::mutex clientsSocketMutex;
+    std::mutex targetPortMutex;
 
     //Client side (we send, no target port)
     std::vector<std::unique_ptr<TCPClientConnection>> connectionsToServers;

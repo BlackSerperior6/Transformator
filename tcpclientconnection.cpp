@@ -2,7 +2,7 @@
 
 TCPClientConnection::TCPClientConnection(std::function<void(int connectionNumber, int errorCode, const std::string& errorMessage)> callback,
                                          int conId, ThreadPool* providedThreadPool)
-    : isRunning(false), errorCallback(callback), connectionId(conId), pool(providedThreadPool)
+    : isRunning(false), errorCallback(callback), connectionId(conId), pool(providedThreadPool), comAttempts(5)
 {}
 
 TCPClientConnection::~TCPClientConnection()
@@ -36,11 +36,11 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
 
     TcpStatusCode finalCode = TcpStatusCode::TIMEOUT;
 
-    const int BUFFER_SIZE = 65536;
-    std::vector<char> buffer(BUFFER_SIZE);
-
     for (int i = 0; i <= comAttempts; i++)
     {
+        const int BUFFER_SIZE = 65536;
+        std::vector<char> buffer(BUFFER_SIZE);
+
         SOCKET socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
         setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeoutMs, sizeof(timeoutMs));
@@ -88,12 +88,14 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
             if (bytesReceived >= 4 && receivedData[0] == 'S' && receivedData[1] == 'T' &&
                     receivedData[2] == 'A' && receivedData[3] == 'T')
             {
-                if (bytesReceived >= 8)
+                if (bytesReceived >= 7)
                 {
                     int code = 0;
 
-                    for (int i = 4; i < 8 && i < bytesReceived; i++)
+                    for (int i = 4; i < 7 && i < bytesReceived; i++)
                         code = code * 10 + (receivedData[i] - '0');
+
+                    finalCode = static_cast<TcpStatusCode>(code);
                 }
             }
         }
