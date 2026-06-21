@@ -59,7 +59,11 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
 
         if (::connect(socket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
         {
-            finalCode = TcpStatusCode::CONNECTION_ERROR;
+            if (WSAGetLastError() == WSAETIMEDOUT)
+                finalCode = TcpStatusCode::TIMEOUT;
+            else
+                finalCode = TcpStatusCode::CONNECTION_ERROR;
+
             closesocket(socket);
             break;
         }
@@ -68,7 +72,11 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
 
         if (byteSend == SOCKET_ERROR)
         {
-            finalCode = TcpStatusCode::SEND_ERROR;
+            if (WSAGetLastError() == WSAETIMEDOUT)
+                finalCode = TcpStatusCode::TIMEOUT;
+            else
+                finalCode = TcpStatusCode::SEND_ERROR;
+
             closesocket(socket);
             continue;
         }
@@ -77,27 +85,37 @@ void TCPClientConnection::SendDataWithRetries(const std::vector<char>& data, int
 
         if (bytesReceived <= 0)
         {
-            finalCode = TcpStatusCode::RECEIVE_ERROR;
+            if (bytesReceived == 0)
+                finalCode = TcpStatusCode::CONNECTION_ABORTED;
+            else if (WSAGetLastError() == WSAETIMEDOUT)
+                finalCode = TcpStatusCode::TIMEOUT;
+            else
+                finalCode = TcpStatusCode::RECEIVE_ERROR;
+
             closesocket(socket);
-            continue;
+
+            if (finalCode != TcpStatusCode::CONNECTION_ABORTED)
+                continue;
+            else
+                break;
         }
         else
         {
             std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesReceived);
 
-            if (bytesReceived >= 4 && receivedData[0] == 'S' && receivedData[1] == 'T' &&
+            if (bytesReceived >= 7 && receivedData[0] == 'S' && receivedData[1] == 'T' &&
                     receivedData[2] == 'A' && receivedData[3] == 'T')
             {
-                if (bytesReceived >= 7)
-                {
-                    int code = 0;
+                int code = 0;
 
-                    for (int i = 4; i < 7 && i < bytesReceived; i++)
-                        code = code * 10 + (receivedData[i] - '0');
+                for (int i = 4; i < 7 && i < bytesReceived; i++)
+                    code = code * 10 + (receivedData[i] - '0');
 
-                    finalCode = static_cast<TcpStatusCode>(code);
-                }
+                finalCode = static_cast<TcpStatusCode>(code);
             }
+
+            if (finalCode == TcpStatusCode::FORBIDDEN)
+                break;
         }
 
         closesocket(socket);

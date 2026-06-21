@@ -127,13 +127,13 @@ void TcpPort::StopServer()
 
     clientSockets.clear();
 
-    delete clientThreads;
-
     if (listenSocket != INVALID_SOCKET)
     {
         closesocket(listenSocket);
         listenSocket = INVALID_SOCKET;
     }
+
+    delete clientThreads;
 
     if (listenThread.joinable())
         listenThread.join();
