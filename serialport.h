@@ -30,7 +30,8 @@ public:
 
 private:
     HANDLE hComPort;
-    std::mutex mtx;
+    std::mutex transferMutex;
+    std::mutex baseAcceptMutex;
     std::thread readThread;
     ThreadPool* acceptThreadsPool;
     std::atomic<bool> isRunning;

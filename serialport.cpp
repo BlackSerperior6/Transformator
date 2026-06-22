@@ -12,21 +12,37 @@ SerialPort::~SerialPort()
 bool SerialPort::Start()
 {
     std::string fullPortName = "\\\\.\\" + portName;
-            hComPort = CreateFileA(
-                fullPortName.c_str(),
-                GENERIC_READ | GENERIC_WRITE,
-                0,
-                NULL,
-                OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL,
-                NULL
-            );
+
+    if (portName.empty())
+    {
+        errorCallback(connectionId, 0, "Empty port name");
+        return false;
+    }
+
+    hComPort = CreateFileA(
+        fullPortName.c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
 
     if (hComPort == INVALID_HANDLE_VALUE)
     {
         if (errorCallback)
             errorCallback(connectionId, 0, std::to_string(GetLastError()));
+        return false;
+    }
 
+    COMSTAT comStat;
+    DWORD errors;
+
+    if (!ClearCommError(hComPort, &errors, &comStat))
+    {
+        errorCallback(connectionId, 0, "Failed to clear comm errors");
+        CloseHandle(hComPort);
         return false;
     }
 
@@ -35,21 +51,23 @@ bool SerialPort::Start()
 
     if (!GetCommState(hComPort, &dcb))
     {
-        if (errorCallback)
-            errorCallback(connectionId, 0, "Failed to get COM port state");
-
+        errorCallback(connectionId, 0, "Failed to get COM port state");
         CloseHandle(hComPort);
         return false;
     }
+
+    DCB originalDcb = dcb;
 
     dcb.BaudRate = baudRate;
     dcb.ByteSize = 8;
     dcb.Parity = NOPARITY;
     dcb.StopBits = ONESTOPBIT;
+
     dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
-    dcb.fDtrControl = DTR_CONTROL_HANDSHAKE;
     dcb.fOutxCtsFlow = TRUE;
-    dcb.fOutxDsrFlow = TRUE;
+    dcb.fDtrControl = DTR_CONTROL_ENABLE;
+    dcb.fOutxDsrFlow = FALSE;
+
     dcb.fOutX = FALSE;
     dcb.fInX = FALSE;
     dcb.fNull = FALSE;
@@ -58,6 +76,8 @@ bool SerialPort::Start()
 
     if (!SetCommState(hComPort, &dcb))
     {
+        SetCommState(hComPort, &originalDcb);
+
         if (errorCallback)
             errorCallback(connectionId, 0, "Failed to set COM port state");
 
@@ -81,7 +101,8 @@ bool SerialPort::Start()
         return false;
     }
 
-    PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_TXCLEAR);
+    if (!PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_TXCLEAR))
+        errorCallback(connectionId, 0, "Failed to purge buffers");
 
     if (targetPort != nullptr)
         StartReading();
@@ -93,7 +114,6 @@ bool SerialPort::Start()
 
 void SerialPort::Accept(const std::vector<char>& data)
 {
-    AbstractPort::Accept(data);
     acceptThreadsPool->AddTask([this, data]{this->AcceptThread(data);});
 }
 
@@ -137,22 +157,25 @@ bool SerialPort::StartReading()
 
 void SerialPort::AcceptThread(const std::vector<char>& data)
 {
-    std::lock_guard<std::mutex> lock(mtx);
-
-    if (!isRunning)
-    {
-        errorCallback(connectionId, 0, "COM not running!");
-        return;
-    }
-
     DWORD bytesWritten;
 
-    if (!WriteFile(hComPort, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, NULL))
     {
-        DWORD error = GetLastError();
-        errorCallback(connectionId, 0, "WriteFile failed: " + std::to_string(error));
-        return;
+        std::lock_guard<std::mutex> lock(transferMutex);
+
+        if (!isRunning)
+        {
+            errorCallback(connectionId, 0, "COM not running!");
+            return;
+        }
+
+        if (!WriteFile(hComPort, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, NULL))
+        {
+            DWORD error = GetLastError();
+            errorCallback(connectionId, 0, "WriteFile failed: " + std::to_string(error));
+            return;
+        }
     }
+
 
     if (bytesWritten == 0)
     {
@@ -164,6 +187,11 @@ void SerialPort::AcceptThread(const std::vector<char>& data)
     {
         errorCallback(connectionId, 0, "Failed to write all data!");
         return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(baseAcceptMutex);
+        AbstractPort::Accept(data);
     }
 }
 

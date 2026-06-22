@@ -54,10 +54,10 @@ void TcpPort::Accept(const std::vector<char> &data)
     if (!isRunning || targetPort != nullptr)
         return;
 
-    AbstractPort::Accept(data);
-
     for (size_t i = 0; i < connectionsToServers.size(); i++)
         SendData(i, data);
+
+    AbstractPort::Accept(data);
 }
 
 void TcpPort::SendData(size_t targetIndex, const std::vector<char> &data)
